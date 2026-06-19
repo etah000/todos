@@ -7,6 +7,7 @@ import 'package:todos/features/todos/data/todo_repository.dart';
 import 'package:todos/features/todos/domain/recurrence.dart';
 import 'package:todos/features/todos/domain/todo.dart';
 import 'package:todos/features/todos/domain/todo_completion.dart';
+import 'package:todos/features/todos/presentation/bloc/notification_scheduler.dart';
 import 'package:todos/features/todos/presentation/bloc/todo_bloc.dart';
 import 'package:todos/features/todos/presentation/bloc/todo_event.dart';
 import 'package:todos/features/todos/presentation/bloc/todo_state.dart';
@@ -14,11 +15,13 @@ import 'package:uuid/uuid.dart';
 
 class _MockTodoRepo extends Mock implements TodoRepository {}
 class _MockCompletionRepo extends Mock implements TodoCompletionRepository {}
+class _MockScheduler extends Mock implements NotificationScheduler {}
 class _FixedUuid extends Mock implements Uuid {}
 
 void main() {
   late _MockTodoRepo todoRepo;
   late _MockCompletionRepo completionRepo;
+  late _MockScheduler scheduler;
   late _FixedUuid uuid;
 
   setUpAll(() {
@@ -35,6 +38,7 @@ void main() {
   setUp(() {
     todoRepo = _MockTodoRepo();
     completionRepo = _MockCompletionRepo();
+    scheduler = _MockScheduler();
     uuid = _FixedUuid();
     when(() => uuid.v4()).thenReturn('fixed-uuid');
     when(() => completionRepo.findByTodoInPeriod(
@@ -42,6 +46,8 @@ void main() {
           periodStart: any(named: 'periodStart'),
           periodEnd: any(named: 'periodEnd'),
         )).thenAnswer((_) async => null);
+    when(() => scheduler.schedule(any(), any(), any())).thenAnswer((_) async {});
+    when(() => scheduler.cancel(any())).thenAnswer((_) async {});
   });
 
   Todo makeTodo({String id = 'a1', Recurrence r = Recurrence.monthly}) {
@@ -57,7 +63,12 @@ void main() {
       'emits [loading, loaded] with items on Subscribe',
       build: () {
         when(() => todoRepo.getAll()).thenAnswer((_) async => [makeTodo()]);
-        return TodoBloc(todoRepo: todoRepo, completionRepo: completionRepo, uuid: uuid);
+        return TodoBloc(
+          todoRepo: todoRepo,
+          completionRepo: completionRepo,
+          uuid: uuid,
+          notifications: scheduler,
+        );
       },
       act: (b) => b.add(const TodosSubscriptionRequested()),
       expect: () => [
@@ -77,6 +88,7 @@ void main() {
           todoRepo: todoRepo,
           completionRepo: completionRepo,
           uuid: uuid,
+          notifications: scheduler,
           now: () => DateTime(2026, 6, 26),
         );
       },

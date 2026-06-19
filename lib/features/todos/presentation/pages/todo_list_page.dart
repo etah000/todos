@@ -12,6 +12,7 @@ import '../bloc/todo_bloc.dart';
 import '../bloc/todo_event.dart';
 import '../bloc/todo_state.dart';
 import '../widgets/todo_tile.dart';
+import '../bloc/notification_scheduler.dart';
 import 'todo_form_page.dart';
 
 class TodoListPage extends StatelessWidget {
@@ -25,6 +26,7 @@ class TodoListPage extends StatelessWidget {
         todoRepo: TodoRepository(db),
         completionRepo: TodoCompletionRepository(db),
         uuid: const Uuid(),
+        notifications: const SystemNotificationScheduler(),
       )..add(const TodosSubscriptionRequested()),
       child: const _TodoListView(),
     );

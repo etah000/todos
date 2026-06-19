@@ -7,6 +7,7 @@ import '../../data/todo_repository.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/todo.dart';
 import '../../domain/todo_completion.dart';
+import 'notification_scheduler.dart';
 import 'todo_event.dart';
 import 'todo_state.dart';
 
@@ -15,10 +16,12 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
     required TodoRepository todoRepo,
     required TodoCompletionRepository completionRepo,
     required Uuid uuid,
+    required NotificationScheduler notifications,
     DateTime Function()? now,
   })  : _todos = todoRepo,
         _completions = completionRepo,
         _uuid = uuid,
+        _notifications = notifications,
         _now = now ?? DateTime.now,
         super(const TodosInitial()) {
     on<TodosSubscriptionRequested>(_onSubscribe);
@@ -31,6 +34,7 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
   final TodoRepository _todos;
   final TodoCompletionRepository _completions;
   final Uuid _uuid;
+  final NotificationScheduler _notifications;
   final DateTime Function() _now;
 
   Future<void> _onSubscribe(TodosSubscriptionRequested e, Emitter<TodoState> emit) async {
@@ -65,17 +69,25 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       archived: false,
     );
     await _todos.insert(todo);
+    if (todo.reminderTime != null && todo.reminderTime!.isAfter(_now())) {
+      await _notifications.schedule(todo.id, todo.title, todo.reminderTime!);
+    }
     add(const TodosSubscriptionRequested());
   }
 
   Future<void> _onUpdated(TodoUpdated e, Emitter<TodoState> emit) async {
     final updated = (e.todo as Todo).copyWith(updatedAt: _now());
     await _todos.update(updated);
+    await _notifications.cancel(updated.id);
+    if (updated.reminderTime != null && updated.reminderTime!.isAfter(_now())) {
+      await _notifications.schedule(updated.id, updated.title, updated.reminderTime!);
+    }
     add(const TodosSubscriptionRequested());
   }
 
   Future<void> _onDeleted(TodoDeleted e, Emitter<TodoState> emit) async {
     await _todos.delete(e.id);
+    await _notifications.cancel(e.id);
     add(const TodosSubscriptionRequested());
   }
 
