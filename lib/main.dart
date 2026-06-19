@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
+import 'core/database/database.dart';
+import 'core/notifications/notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const TodosApp());
+  await NotificationService.instance.init();
+  final dir = await getApplicationDocumentsDirectory();
+  final db = await AppDatabase.open(path: p.join(dir.path, 'todos.db'));
+  runApp(TodosApp(database: db));
 }
