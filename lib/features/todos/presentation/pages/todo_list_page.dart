@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database_scope.dart';
+import '../../../../core/theme/theme_scope.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../data/todo_completion_repository.dart';
 import '../../data/todo_repository.dart';
@@ -39,7 +40,16 @@ class _TodoListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Todos')),
+      appBar: AppBar(
+        title: const Text('Todos'),
+        actions: [
+          IconButton(
+            tooltip: 'Cycle theme',
+            onPressed: () => ThemeScope.of(context).cycle(),
+            icon: const Icon(Icons.brightness_6),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(context),
         child: const Icon(Icons.add),
