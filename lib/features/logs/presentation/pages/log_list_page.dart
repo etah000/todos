@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database_scope.dart';
+import '../../../../core/theme/theme_scope.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../data/log_entry_repository.dart';
 import '../../data/log_item_repository.dart';
@@ -45,6 +46,11 @@ class _LogListView extends StatelessWidget {
             tooltip: 'Add item',
             onPressed: () => _openItemForm(context),
             icon: const Icon(Icons.add),
+          ),
+          IconButton(
+            tooltip: 'Cycle theme',
+            onPressed: () => ThemeScope.of(context).cycle(),
+            icon: const Icon(Icons.brightness_6),
           ),
         ],
       ),
@@ -101,15 +107,31 @@ class _LogItemTile extends StatelessWidget {
     return ListTile(
       title: Text(item.name),
       subtitle: Text('${entries.length} entries · last: $last${item.unit == null ? '' : ' ${item.unit}'}'),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Add entry',
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              final bloc = context.read<LogBloc>();
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => BlocProvider.value(value: bloc, child: LogFormPage(item: item)),
+              ));
+            },
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
       onTap: () {
         Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => LogChartPage(item: item),
         ));
       },
       onLongPress: () {
+        final bloc = context.read<LogBloc>();
         Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => LogFormPage(item: item),
+          builder: (_) => BlocProvider.value(value: bloc, child: LogFormPage(item: item)),
         ));
       },
     );

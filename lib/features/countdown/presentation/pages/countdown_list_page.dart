@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database_scope.dart';
+import '../../../../core/theme/theme_scope.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../data/countdown_repository.dart';
 import '../bloc/countdown_bloc.dart';
@@ -34,7 +35,16 @@ class _CountdownListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Countdown')),
+      appBar: AppBar(
+        title: const Text('Countdown'),
+        actions: [
+          IconButton(
+            tooltip: 'Cycle theme',
+            onPressed: () => ThemeScope.of(context).cycle(),
+            icon: const Icon(Icons.brightness_6),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           final bloc = context.read<CountdownBloc>();

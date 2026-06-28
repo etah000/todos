@@ -1,24 +1,70 @@
 // lib/features/todos/presentation/bloc/notification_scheduler.dart
-import 'package:todos/core/notifications/notification_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    show DateTimeComponents;
+
+import '../../../../core/notifications/notification_service.dart';
+import '../../domain/recurrence.dart';
 
 abstract class NotificationScheduler {
-  Future<void> schedule(String todoId, String title, DateTime when);
+  Future<void> schedule(
+    String todoId,
+    String title,
+    DateTime when, {
+    Recurrence recurrence = Recurrence.none,
+  });
   Future<void> cancel(String todoId);
 }
 
 class SystemNotificationScheduler implements NotificationScheduler {
   const SystemNotificationScheduler();
-  @override
-  Future<void> schedule(String todoId, String title, DateTime when) async {
-    await NotificationService.instance.schedule(
-      id: NotificationService.idForKey('todo:$todoId'),
-      title: title,
-      body: 'Reminder: $title',
-      when: when,
-    );
+
+  DateTimeComponents? _componentsFor(Recurrence r) {
+    switch (r) {
+      case Recurrence.none:
+        return null;
+      case Recurrence.daily:
+        return DateTimeComponents.time;
+      case Recurrence.weekly:
+        return DateTimeComponents.dayOfWeekAndTime;
+      case Recurrence.monthly:
+        return DateTimeComponents.dayOfMonthAndTime;
+    }
   }
+
+  @override
+  Future<void> schedule(
+    String todoId,
+    String title,
+    DateTime when, {
+    Recurrence recurrence = Recurrence.none,
+  }) async {
+    try {
+      final firstFire = recurrence.nextReminderAfter(when);
+      if (firstFire == null) return; // past one-time reminder
+      await NotificationService.instance.schedule(
+        id: NotificationService.idForKey('todo:$todoId'),
+        title: title,
+        body: 'Reminder: $title',
+        when: firstFire,
+        payload: 'todo:$todoId',
+        matchDateTimeComponents: _componentsFor(recurrence),
+      );
+    } catch (err) {
+      // Defensive: a scheduling failure must never bubble up to the bloc
+      // (which would abort the surrounding todo save/refresh flow).
+      debugPrint('SystemNotificationScheduler.schedule failed: $err');
+    }
+  }
+
   @override
   Future<void> cancel(String todoId) async {
-    await NotificationService.instance.cancel(NotificationService.idForKey('todo:$todoId'));
+    try {
+      await NotificationService.instance.cancel(
+        NotificationService.idForKey('todo:$todoId'),
+      );
+    } catch (err) {
+      debugPrint('SystemNotificationScheduler.cancel failed: $err');
+    }
   }
 }

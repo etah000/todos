@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database_scope.dart';
+import '../../../../core/notifications/notification_service.dart';
 import '../../../../core/theme/theme_scope.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../data/todo_completion_repository.dart';
@@ -54,39 +55,55 @@ class _TodoListView extends StatelessWidget {
         onPressed: () => _openForm(context),
         child: const Icon(Icons.add),
       ),
-      body: BlocBuilder<TodoBloc, TodoState>(
-        builder: (context, state) {
-          if (state is TodosLoading || state is TodosInitial) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is TodosError) {
-            return Center(child: Text('Error: ${state.message}'));
-          }
-          final loaded = state as TodosLoaded;
-          if (loaded.items.isEmpty) {
-            return const EmptyState(
-              title: 'No todos yet',
-              subtitle: 'Tap + to add your first todo.',
-              icon: Icons.check_circle_outline,
-            );
-          }
-          return ListView.builder(
-            itemCount: loaded.items.length,
-            itemBuilder: (context, i) {
-              final todo = loaded.items[i];
-              return TodoTile(
-                todo: todo,
-                completion: loaded.completionsByTodoId[todo.id],
-                onToggleComplete: () => context
-                    .read<TodoBloc>()
-                    .add(TodoCompletionToggled(todo.id)),
-                onTap: () => _openForm(context, existing: todo),
-                onDelete: () =>
-                    context.read<TodoBloc>().add(TodoDeleted(todo.id)),
-              );
-            },
-          );
+      body: BlocListener<TodoBloc, TodoState>(
+        listener: (context, state) {
+          if (state is! TodosLoaded) return;
+          final payload = NotificationService.instance.consumePendingTap();
+          if (payload == null) return;
+          const prefix = 'todo:';
+          if (!payload.startsWith(prefix)) return;
+          final id = payload.substring(prefix.length);
+          final match = state.items.where((t) => t.id == id).toList();
+          if (match.isEmpty) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
+            _openForm(context, existing: match.first);
+          });
         },
+        child: BlocBuilder<TodoBloc, TodoState>(
+          builder: (context, state) {
+            if (state is TodosLoading || state is TodosInitial) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state is TodosError) {
+              return Center(child: Text('Error: ${state.message}'));
+            }
+            final loaded = state as TodosLoaded;
+            if (loaded.items.isEmpty) {
+              return const EmptyState(
+                title: 'No todos yet',
+                subtitle: 'Tap + to add your first todo.',
+                icon: Icons.check_circle_outline,
+              );
+            }
+            return ListView.builder(
+              itemCount: loaded.items.length,
+              itemBuilder: (context, i) {
+                final todo = loaded.items[i];
+                return TodoTile(
+                  todo: todo,
+                  completion: loaded.completionsByTodoId[todo.id],
+                  onToggleComplete: () => context
+                      .read<TodoBloc>()
+                      .add(TodoCompletionToggled(todo.id)),
+                  onTap: () => _openForm(context, existing: todo),
+                  onDelete: () =>
+                      context.read<TodoBloc>().add(TodoDeleted(todo.id)),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

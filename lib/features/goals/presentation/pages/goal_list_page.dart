@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database_scope.dart';
+import '../../../../core/theme/theme_scope.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../data/activity_completion_repository.dart';
 import '../../data/goal_activity_repository.dart';
@@ -39,7 +40,16 @@ class _GoalListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Goals')),
+      appBar: AppBar(
+        title: const Text('Goals'),
+        actions: [
+          IconButton(
+            tooltip: 'Cycle theme',
+            onPressed: () => ThemeScope.of(context).cycle(),
+            icon: const Icon(Icons.brightness_6),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(context),
         child: const Icon(Icons.add),

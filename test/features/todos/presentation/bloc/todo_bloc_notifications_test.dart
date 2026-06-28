@@ -38,7 +38,12 @@ void main() {
           periodStart: any(named: 'periodStart'),
           periodEnd: any(named: 'periodEnd'),
         )).thenAnswer((_) async => null);
-    when(() => scheduler.schedule(any(), any(), any())).thenAnswer((_) async {});
+    when(() => scheduler.schedule(
+          any(),
+          any(),
+          any(),
+          recurrence: any(named: 'recurrence'),
+        )).thenAnswer((_) async {});
     when(() => scheduler.cancel(any())).thenAnswer((_) async {});
   });
 

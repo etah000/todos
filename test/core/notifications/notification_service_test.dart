@@ -22,4 +22,23 @@ void main() {
       expect(v, lessThan(1 << 31));
     });
   });
+
+  group('NotificationService.consumePendingTap', () {
+    final svc = NotificationService.instance;
+
+    setUp(() {
+      svc.debugSetPendingTap(null);
+    });
+
+    test('returns null when no tap has been recorded', () {
+      expect(svc.consumePendingTap(), isNull);
+      expect(svc.consumePendingTap(), isNull);
+    });
+
+    test('returns the payload once and clears it on the next read', () {
+      svc.debugSetPendingTap('todo:abc');
+      expect(svc.consumePendingTap(), 'todo:abc');
+      expect(svc.consumePendingTap(), isNull);
+    });
+  });
 }

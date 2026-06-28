@@ -69,9 +69,7 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       archived: false,
     );
     await _todos.insert(todo);
-    if (todo.reminderTime != null && todo.reminderTime!.isAfter(_now())) {
-      await _notifications.schedule(todo.id, todo.title, todo.reminderTime!);
-    }
+    await _maybeScheduleReminder(todo);
     add(const TodosSubscriptionRequested());
   }
 
@@ -79,9 +77,7 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
     final updated = (e.todo as Todo).copyWith(updatedAt: _now());
     await _todos.update(updated);
     await _notifications.cancel(updated.id);
-    if (updated.reminderTime != null && updated.reminderTime!.isAfter(_now())) {
-      await _notifications.schedule(updated.id, updated.title, updated.reminderTime!);
-    }
+    await _maybeScheduleReminder(updated);
     add(const TodosSubscriptionRequested());
   }
 
@@ -89,6 +85,22 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
     await _todos.delete(e.id);
     await _notifications.cancel(e.id);
     add(const TodosSubscriptionRequested());
+  }
+
+  /// Schedules the reminder only when [Recurrence.nextReminderAfter] returns
+  /// a non-null value. A past one-time reminder is not re-armed; a past
+  /// recurring reminder is always scheduled (the OS picks the next match
+  /// via [DateTimeComponents]).
+  Future<void> _maybeScheduleReminder(Todo todo) async {
+    final r = todo.reminderTime;
+    if (r == null) return;
+    if (todo.recurrence.nextReminderAfter(r, now: _now()) == null) return;
+    await _notifications.schedule(
+      todo.id,
+      todo.title,
+      r,
+      recurrence: todo.recurrence,
+    );
   }
 
   Future<void> _onToggled(TodoCompletionToggled e, Emitter<TodoState> emit) async {

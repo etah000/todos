@@ -1,4 +1,5 @@
 // lib/core/notifications/notification_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -10,16 +11,56 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
+  /// Last notification payload the user tapped (warm tap) or which launched
+  /// the app (cold start). Consumed once by [consumePendingTap].
+  String? _pendingTap;
+
   Future<void> init() async {
     if (_initialized) return;
     tz_data.initializeTimeZones();
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          _pendingTap = payload;
+        }
+      },
+    );
+
+    // Seed from a cold-start launch (user tapped the notification to open the
+    // app): the callback above only fires for warm taps, not the launch tap.
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    if (launch != null && launch.didNotificationLaunchApp) {
+      final payload = launch.notificationResponse?.payload;
+      if (payload != null && payload.isNotEmpty) {
+        _pendingTap = payload;
+      }
+    }
+
     final androidImpl = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.requestNotificationsPermission();
     _initialized = true;
+  }
+
+  /// Returns the payload of a notification tap that launched the app or
+  /// occurred while it was in the background, and clears it. Returns null
+  /// if there is no pending tap.
+  String? consumePendingTap() {
+    final p = _pendingTap;
+    _pendingTap = null;
+    return p;
+  }
+
+  /// Test-only helper to seed the pending-tap slot without booting the
+  /// notification plugin. Production code uses the tap callback / launch
+  /// details inside [init].
+  @visibleForTesting
+  void debugSetPendingTap(String? payload) {
+    _pendingTap = payload;
   }
 
   /// Stable, positive 32-bit id derived from a key.
@@ -44,31 +85,55 @@ class NotificationService {
     required String title,
     required String body,
     required DateTime when,
+    String? payload,
+    DateTimeComponents? matchDateTimeComponents,
   }) async {
     if (!_initialized) await init();
-    final scheduled = tz.TZDateTime.from(when, tz.local);
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduled,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'todos_reminders',
-          'Reminders',
-          channelDescription: 'Todo reminders',
-          importance: Importance.high,
-          priority: Priority.high,
+    try {
+      final scheduled = tz.TZDateTime.from(when, tz.local);
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      // `USE_EXACT_ALARM` (declared in AndroidManifest) is auto-granted for
+      // qualifying apps. When the OS denies exact alarms (e.g. some OEM ROMs
+      // or devices where USE_EXACT_ALARM isn't honored), fall back to inexact
+      // so the reminder still fires within a few minutes instead of throwing.
+      final canExact =
+          await androidImpl?.canScheduleExactNotifications() ?? false;
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduled,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'todos_reminders',
+            'Reminders',
+            channelDescription: 'Todo reminders',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+        androidScheduleMode: canExact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: matchDateTimeComponents,
+        payload: payload,
+      );
+    } catch (err) {
+      // A notification failure must never break the calling flow
+      // (todo save, todo update, or reboot re-schedule).
+      debugPrint('NotificationService.schedule failed: $err');
+    }
   }
 
   Future<void> cancel(int id) async {
     if (!_initialized) await init();
-    await _plugin.cancel(id);
+    try {
+      await _plugin.cancel(id);
+    } catch (err) {
+      debugPrint('NotificationService.cancel failed: $err');
+    }
   }
 }
