@@ -1,6 +1,8 @@
 // lib/features/countdown/presentation/bloc/countdown_event.dart
 import 'package:equatable/equatable.dart';
 
+import '../../domain/countdown_event.dart' as domain;
+
 abstract class CountdownEvent extends Equatable {
   const CountdownEvent();
   @override
@@ -18,6 +20,13 @@ class CountdownCreated extends CountdownEvent {
   final String? notes;
   @override
   List<Object?> get props => [title, targetDate, notes];
+}
+
+class CountdownUpdated extends CountdownEvent {
+  const CountdownUpdated(this.event);
+  final domain.CountdownEvent event;
+  @override
+  List<Object?> get props => [event];
 }
 
 class CountdownDeleted extends CountdownEvent {

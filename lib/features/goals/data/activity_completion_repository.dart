@@ -38,4 +38,28 @@ class ActivityCompletionRepository {
     );
     return rows.map(ActivityCompletion.fromMap).toList();
   }
+
+  /// All completions for any activity in [activityIds] whose `completedAt`
+  /// falls in the half-open range [from, to). Used for chart aggregations.
+  Future<List<ActivityCompletion>> listByActivitiesInRange(
+    List<String> activityIds, {
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    if (activityIds.isEmpty) return const [];
+    final placeholders = List.filled(activityIds.length, '?').join(',');
+    final rows = await _raw.query(
+      Tables.activityCompletions,
+      where: '${ActivityCompletionCols.activityId} IN ($placeholders) '
+          'AND ${ActivityCompletionCols.completedAt} >= ? '
+          'AND ${ActivityCompletionCols.completedAt} < ?',
+      whereArgs: [
+        ...activityIds,
+        from.millisecondsSinceEpoch,
+        to.millisecondsSinceEpoch,
+      ],
+      orderBy: '${ActivityCompletionCols.completedAt} ASC',
+    );
+    return rows.map(ActivityCompletion.fromMap).toList();
+  }
 }

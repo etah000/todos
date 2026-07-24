@@ -4,6 +4,7 @@ class Tables {
 
   static const todos = 'todos';
   static const todoCompletions = 'todo_completions';
+  static const finishedTodos = 'finished_todos';
   static const logItems = 'log_items';
   static const logEntries = 'log_entries';
   static const goals = 'goals';
@@ -34,6 +35,15 @@ class TodoCompletionCols {
   static const periodEnd = 'period_end';
   static const completedAt = 'completed_at';
   static const notes = 'notes';
+}
+
+class FinishedTodoCols {
+  const FinishedTodoCols._();
+  static const id = 'id';
+  static const todoId = 'todo_id';
+  static const title = 'title';
+  static const completedAt = 'completed_at';
+  static const recurrenceType = 'recurrence_type';
 }
 
 class LogItemCols {
@@ -76,6 +86,9 @@ class GoalActivityCols {
   static const recurrenceType = 'recurrence_type';
   static const recurrenceConfig = 'recurrence_config';
   static const createdAt = 'created_at';
+  static const metric = 'metric';
+  static const totalCount = 'total_count';
+  static const totalSeconds = 'total_seconds';
 }
 
 class ActivityCompletionCols {

@@ -89,16 +89,14 @@ class NotificationService {
     DateTimeComponents? matchDateTimeComponents,
   }) async {
     if (!_initialized) await init();
+    debugPrint('NotificationService.schedule: id=$id title="$title" when=$when now=${DateTime.now()} match=$matchDateTimeComponents');
     try {
       final scheduled = tz.TZDateTime.from(when, tz.local);
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      // `USE_EXACT_ALARM` (declared in AndroidManifest) is auto-granted for
-      // qualifying apps. When the OS denies exact alarms (e.g. some OEM ROMs
-      // or devices where USE_EXACT_ALARM isn't honored), fall back to inexact
-      // so the reminder still fires within a few minutes instead of throwing.
       final canExact =
           await androidImpl?.canScheduleExactNotifications() ?? false;
+      debugPrint('NotificationService.schedule: canExact=$canExact tzScheduled=$scheduled');
       await _plugin.zonedSchedule(
         id,
         title,
@@ -121,10 +119,9 @@ class NotificationService {
         matchDateTimeComponents: matchDateTimeComponents,
         payload: payload,
       );
-    } catch (err) {
-      // A notification failure must never break the calling flow
-      // (todo save, todo update, or reboot re-schedule).
-      debugPrint('NotificationService.schedule failed: $err');
+      debugPrint('NotificationService.schedule: zonedSchedule returned');
+    } catch (err, st) {
+      debugPrint('NotificationService.schedule failed: $err\n$st');
     }
   }
 

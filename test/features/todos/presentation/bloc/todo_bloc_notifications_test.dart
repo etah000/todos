@@ -1,8 +1,10 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:todos/features/todos/data/finished_todo_repository.dart';
 import 'package:todos/features/todos/data/todo_completion_repository.dart';
 import 'package:todos/features/todos/data/todo_repository.dart';
+import 'package:todos/features/todos/domain/finished_todo.dart';
 import 'package:todos/features/todos/domain/recurrence.dart';
 import 'package:todos/features/todos/domain/todo.dart';
 import 'package:todos/features/todos/presentation/bloc/notification_scheduler.dart';
@@ -12,11 +14,13 @@ import 'package:uuid/uuid.dart';
 
 class _MockTodoRepo extends Mock implements TodoRepository {}
 class _MockCompletionRepo extends Mock implements TodoCompletionRepository {}
+class _MockFinishedRepo extends Mock implements FinishedTodoRepository {}
 class _MockScheduler extends Mock implements NotificationScheduler {}
 
 void main() {
   late _MockTodoRepo todoRepo;
   late _MockCompletionRepo completionRepo;
+  late _MockFinishedRepo finishedRepo;
   late _MockScheduler scheduler;
 
   setUpAll(() {
@@ -25,11 +29,16 @@ void main() {
       id: 'fb', title: 'fb', createdAt: DateTime(2026, 1, 1),
       updatedAt: DateTime(2026, 1, 1), archived: false, recurrence: Recurrence.none,
     ));
+    registerFallbackValue(FinishedTodo(
+      id: 'fb', todoId: 'fb', title: 'fb',
+      completedAt: DateTime(2026, 1, 1), recurrenceType: 'none',
+    ));
   });
 
   setUp(() {
     todoRepo = _MockTodoRepo();
     completionRepo = _MockCompletionRepo();
+    finishedRepo = _MockFinishedRepo();
     scheduler = _MockScheduler();
     when(() => todoRepo.insert(any())).thenAnswer((_) async {});
     when(() => todoRepo.getAll()).thenAnswer((_) async => []);
@@ -38,6 +47,9 @@ void main() {
           periodStart: any(named: 'periodStart'),
           periodEnd: any(named: 'periodEnd'),
         )).thenAnswer((_) async => null);
+    when(() => finishedRepo.insert(any())).thenAnswer((_) async {});
+    when(() => finishedRepo.listSince(any())).thenAnswer((_) async => const []);
+    when(() => finishedRepo.deleteBefore(any())).thenAnswer((_) async => 0);
     when(() => scheduler.schedule(
           any(),
           any(),
@@ -52,6 +64,7 @@ void main() {
     build: () => TodoBloc(
       todoRepo: todoRepo,
       completionRepo: completionRepo,
+      finishedRepo: finishedRepo,
       uuid: const Uuid(),
       notifications: scheduler,
       now: () => DateTime(2026, 6, 1),
@@ -70,6 +83,7 @@ void main() {
     build: () => TodoBloc(
       todoRepo: todoRepo,
       completionRepo: completionRepo,
+      finishedRepo: finishedRepo,
       uuid: const Uuid(),
       notifications: scheduler,
       now: () => DateTime(2026, 6, 1),

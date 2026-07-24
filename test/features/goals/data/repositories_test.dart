@@ -84,5 +84,44 @@ void main() {
       );
       expect(got, c);
     });
+
+    test('listByActivitiesInRange returns only completions in [from, to)',
+        () async {
+      await goals.insert(makeGoal());
+      await activities.insert(makeActivity());
+      await activities.insert(makeActivity(id: 'a2'));
+      await completions.insert(ActivityCompletion(
+        id: 'c1', activityId: 'a1',
+        periodStart: DateTime(2026, 6, 1),
+        periodEnd: DateTime(2026, 6, 7, 23, 59, 59, 999),
+        completedAt: DateTime(2026, 6, 1, 9),
+      ));
+      await completions.insert(ActivityCompletion(
+        id: 'c2', activityId: 'a2',
+        periodStart: DateTime(2026, 6, 8),
+        periodEnd: DateTime(2026, 6, 14, 23, 59, 59, 999),
+        completedAt: DateTime(2026, 6, 8, 9),
+      ));
+      await completions.insert(ActivityCompletion(
+        id: 'c3', activityId: 'a1',
+        periodStart: DateTime(2026, 6, 15),
+        periodEnd: DateTime(2026, 6, 21, 23, 59, 59, 999),
+        completedAt: DateTime(2026, 6, 15, 9),
+      ));
+      // query c1 + c2 only (week 1)
+      final week1 = await completions.listByActivitiesInRange(
+        ['a1', 'a2'],
+        from: DateTime(2026, 6, 1),
+        to: DateTime(2026, 6, 8),
+      );
+      expect(week1.map((c) => c.id), ['c1']);
+      // empty ids
+      final none = await completions.listByActivitiesInRange(
+        const [],
+        from: DateTime(2026, 6, 1),
+        to: DateTime(2026, 6, 30),
+      );
+      expect(none, isEmpty);
+    });
   });
 }

@@ -18,6 +18,7 @@ class CountdownBloc extends Bloc<CountdownEvent, CountdownState> {
         super(const CountdownInitial()) {
     on<CountdownSubscriptionRequested>(_onSubscribe);
     on<CountdownCreated>(_onCreated);
+    on<CountdownUpdated>(_onUpdated);
     on<CountdownDeleted>(_onDeleted);
   }
 
@@ -47,6 +48,11 @@ class CountdownBloc extends Bloc<CountdownEvent, CountdownState> {
       archived: false,
     );
     await _repo.insert(ev);
+    add(const CountdownSubscriptionRequested());
+  }
+
+  Future<void> _onUpdated(CountdownUpdated e, Emitter<CountdownState> emit) async {
+    await _repo.update(e.event);
     add(const CountdownSubscriptionRequested());
   }
 

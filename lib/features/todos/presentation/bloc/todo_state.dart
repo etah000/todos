@@ -1,6 +1,7 @@
 // lib/features/todos/presentation/bloc/todo_state.dart
 import 'package:equatable/equatable.dart';
 
+import '../../domain/finished_todo.dart';
 import '../../domain/todo.dart';
 import '../../domain/todo_completion.dart';
 
@@ -19,21 +20,28 @@ class TodosLoading extends TodoState {
 }
 
 class TodosLoaded extends TodoState {
-  const TodosLoaded({required this.items, this.completionsByTodoId = const {}});
+  const TodosLoaded({
+    required this.items,
+    this.completionsByTodoId = const {},
+    this.history = const [],
+  });
   final List<Todo> items;
   final Map<String, TodoCompletion> completionsByTodoId;
+  final List<FinishedTodo> history;
 
   TodosLoaded copyWith({
     List<Todo>? items,
     Map<String, TodoCompletion>? completionsByTodoId,
+    List<FinishedTodo>? history,
   }) =>
       TodosLoaded(
         items: items ?? this.items,
         completionsByTodoId: completionsByTodoId ?? this.completionsByTodoId,
+        history: history ?? this.history,
       );
 
   @override
-  List<Object?> get props => [items, completionsByTodoId];
+  List<Object?> get props => [items, completionsByTodoId, history];
 }
 
 class TodosError extends TodoState {

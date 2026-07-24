@@ -59,6 +59,7 @@ class _TodoFormPageState extends State<TodoFormPage> {
           else
             TextButton(
               onPressed: _save,
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).appBarTheme.foregroundColor),
               child: const Text('Save'),
             ),
         ],

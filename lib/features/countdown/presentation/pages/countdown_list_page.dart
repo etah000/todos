@@ -48,9 +48,14 @@ class _CountdownListView extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           final bloc = context.read<CountdownBloc>();
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => BlocProvider.value(value: bloc, child: const CountdownFormPage()),
-          ));
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BlocProvider.value(
+                value: bloc,
+                child: const CountdownFormPage(),
+              ),
+            ),
+          );
         },
         child: const Icon(Icons.add),
       ),
@@ -81,6 +86,12 @@ class _CountdownListView extends StatelessWidget {
                   : days > 0
                       ? '$days day${days == 1 ? '' : 's'} left'
                       : '${-days} day${days == -1 ? '' : 's'} ago';
+              final colorScheme = Theme.of(context).colorScheme;
+              final daysColor = days < 0
+                  ? colorScheme.error
+                  : days == 0
+                      ? colorScheme.primary
+                      : Colors.green.shade700;
               return Dismissible(
                 key: ValueKey('countdown-${e.id}'),
                 direction: DismissDirection.endToStart,
@@ -94,12 +105,32 @@ class _CountdownListView extends StatelessWidget {
                 child: ListTile(
                   title: Text(e.title),
                   subtitle: Text(DateFormat.yMMMd().format(e.targetDate)),
-                  trailing: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: days < 0 ? Theme.of(context).disabledColor : null,
-                        ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        label,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: daysColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right),
+                    ],
                   ),
+                  onTap: () {
+                    final bloc = context.read<CountdownBloc>();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: bloc,
+                          child: CountdownFormPage(existing: e),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               );
             },

@@ -34,5 +34,24 @@ void main() {
       final all = await repo.getAll();
       expect(all.map((e) => e.id), ['a', 'b']);
     });
+
+    test('update changes the stored fields', () async {
+      final now = DateTime.now();
+      await repo.insert(CountdownEvent(
+        id: 'a', title: 'Old', targetDate: DateTime(2027, 1, 1),
+        createdAt: now, archived: false,
+      ));
+      final stored = (await repo.getAll()).single;
+      await repo.update(stored.copyWith(
+        title: 'New',
+        targetDate: DateTime(2028, 6, 1),
+        notes: 'reminder',
+      ));
+      final all = await repo.getAll();
+      expect(all, hasLength(1));
+      expect(all.single.title, 'New');
+      expect(all.single.targetDate, DateTime(2028, 6, 1));
+      expect(all.single.notes, 'reminder');
+    });
   });
 }

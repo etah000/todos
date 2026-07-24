@@ -26,4 +26,11 @@ class CountdownRepository {
         where: '${CountdownEventCols.id} = ?',
         whereArgs: [id],
       );
+
+  Future<void> update(CountdownEvent e) => _raw.update(
+        Tables.countdownEvents,
+        e.toMap(),
+        where: '${CountdownEventCols.id} = ?',
+        whereArgs: [e.id],
+      );
 }

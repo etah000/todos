@@ -2,8 +2,10 @@
 import 'package:bloc/bloc.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../data/finished_todo_repository.dart';
 import '../../data/todo_completion_repository.dart';
 import '../../data/todo_repository.dart';
+import '../../domain/finished_todo.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/todo.dart';
 import '../../domain/todo_completion.dart';
@@ -15,14 +17,18 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
   TodoBloc({
     required TodoRepository todoRepo,
     required TodoCompletionRepository completionRepo,
+    required FinishedTodoRepository finishedRepo,
     required Uuid uuid,
     required NotificationScheduler notifications,
     DateTime Function()? now,
+    Duration historyRetention = const Duration(days: 7),
   })  : _todos = todoRepo,
         _completions = completionRepo,
+        _finished = finishedRepo,
         _uuid = uuid,
         _notifications = notifications,
         _now = now ?? DateTime.now,
+        _retention = historyRetention,
         super(const TodosInitial()) {
     on<TodosSubscriptionRequested>(_onSubscribe);
     on<TodoCreated>(_onCreated);
@@ -33,13 +39,16 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
 
   final TodoRepository _todos;
   final TodoCompletionRepository _completions;
+  final FinishedTodoRepository _finished;
   final Uuid _uuid;
   final NotificationScheduler _notifications;
   final DateTime Function() _now;
+  final Duration _retention;
 
   Future<void> _onSubscribe(TodosSubscriptionRequested e, Emitter<TodoState> emit) async {
     emit(const TodosLoading());
     try {
+      await _pruneOldHistory();
       final items = await _todos.getAll();
       final at = _now();
       final completions = <String, TodoCompletion>{};
@@ -48,7 +57,12 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
         final c = await _completions.findByTodoInPeriod(t.id, periodStart: start, periodEnd: end);
         if (c != null) completions[t.id] = c;
       }
-      emit(TodosLoaded(items: items, completionsByTodoId: completions));
+      final history = await _finished.listSince(at.subtract(_retention));
+      emit(TodosLoaded(
+        items: items,
+        completionsByTodoId: completions,
+        history: history,
+      ));
     } catch (err) {
       emit(TodosError(err.toString()));
     }
@@ -113,16 +127,42 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       periodStart: start,
       periodEnd: end,
     );
-    if (existing == null) {
-      final c = TodoCompletion(
-        id: _uuid.v4(),
-        todoId: todo.id,
-        periodStart: start,
-        periodEnd: end,
-        completedAt: at,
-      );
-      await _completions.insert(c);
+    if (existing != null) {
+      // Already counted for this period; ignore re-toggle (matching old UX).
+      add(const TodosSubscriptionRequested());
+      return;
+    }
+    // Record a completion for the current period regardless of recurrence:
+    // boolean "done this period" is the single source of truth for the tick.
+    final c = TodoCompletion(
+      id: _uuid.v4(),
+      todoId: todo.id,
+      periodStart: start,
+      periodEnd: end,
+      completedAt: at,
+    );
+    await _completions.insert(c);
+    // Also record a history row.
+    await _finished.insert(FinishedTodo(
+      id: _uuid.v4(),
+      todoId: todo.id,
+      title: todo.title,
+      completedAt: at,
+      recurrenceType: todo.recurrence.wire,
+    ));
+    // For one-time todos, hide the active row entirely (cascade removes its completions).
+    if (todo.recurrence == Recurrence.none) {
+      await _notifications.cancel(todo.id);
+      await _todos.delete(todo.id);
+    } else {
+      // Recurring: re-arm next reminder so it keeps firing next period.
+      await _maybeScheduleReminder(todo);
     }
     add(const TodosSubscriptionRequested());
+  }
+
+  Future<void> _pruneOldHistory() async {
+    final cutoff = _now().subtract(_retention);
+    await _finished.deleteBefore(cutoff);
   }
 }

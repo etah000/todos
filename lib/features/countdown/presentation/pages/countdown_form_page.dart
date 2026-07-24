@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../../domain/countdown_event.dart' as domain;
 import '../bloc/countdown_bloc.dart';
 import '../bloc/countdown_event.dart';
 
 class CountdownFormPage extends StatefulWidget {
-  const CountdownFormPage({super.key});
+  const CountdownFormPage({super.key, this.existing});
+  final domain.CountdownEvent? existing;
   @override
   State<CountdownFormPage> createState() => _CountdownFormPageState();
 }
@@ -19,6 +21,17 @@ class _CountdownFormPageState extends State<CountdownFormPage> {
   DateTime? _target;
 
   @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    if (e != null) {
+      _title.text = e.title;
+      _notes.text = e.notes ?? '';
+      _target = e.targetDate;
+    }
+  }
+
+  @override
   void dispose() {
     _title.dispose();
     _notes.dispose();
@@ -27,10 +40,11 @@ class _CountdownFormPageState extends State<CountdownFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.existing != null;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New countdown'),
-        actions: [TextButton(onPressed: _save, child: const Text('Save'))],
+        title: Text(isEdit ? 'Edit countdown' : 'New countdown'),
+        actions: [TextButton(onPressed: _save, style: TextButton.styleFrom(foregroundColor: Theme.of(context).appBarTheme.foregroundColor), child: const Text('Save'))],
       ),
       body: Form(
         key: _formKey,
@@ -85,11 +99,24 @@ class _CountdownFormPageState extends State<CountdownFormPage> {
       );
       return;
     }
-    context.read<CountdownBloc>().add(CountdownCreated(
+    final bloc = context.read<CountdownBloc>();
+    final existing = widget.existing;
+    if (existing == null) {
+      bloc.add(
+        CountdownCreated(
           title: _title.text.trim(),
           targetDate: _target,
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-        ));
+        ),
+      );
+    } else {
+      final updated = existing.copyWith(
+        title: _title.text.trim(),
+        targetDate: _target,
+        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      );
+      bloc.add(CountdownUpdated(updated));
+    }
     Navigator.of(context).pop();
   }
 }

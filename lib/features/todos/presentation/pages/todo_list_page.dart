@@ -1,14 +1,17 @@
 // lib/features/todos/presentation/pages/todo_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database_scope.dart';
 import '../../../../core/notifications/notification_service.dart';
 import '../../../../core/theme/theme_scope.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../data/finished_todo_repository.dart';
 import '../../data/todo_completion_repository.dart';
 import '../../data/todo_repository.dart';
+import '../../domain/finished_todo.dart';
 import '../../domain/todo.dart';
 import '../bloc/todo_bloc.dart';
 import '../bloc/todo_event.dart';
@@ -27,6 +30,7 @@ class TodoListPage extends StatelessWidget {
       create: (_) => TodoBloc(
         todoRepo: TodoRepository(db),
         completionRepo: TodoCompletionRepository(db),
+        finishedRepo: FinishedTodoRepository(db),
         uuid: const Uuid(),
         notifications: const SystemNotificationScheduler(),
       )..add(const TodosSubscriptionRequested()),
@@ -79,28 +83,37 @@ class _TodoListView extends StatelessWidget {
               return Center(child: Text('Error: ${state.message}'));
             }
             final loaded = state as TodosLoaded;
-            if (loaded.items.isEmpty) {
+            if (loaded.items.isEmpty && loaded.history.isEmpty) {
               return const EmptyState(
                 title: 'No todos yet',
                 subtitle: 'Tap + to add your first todo.',
                 icon: Icons.check_circle_outline,
               );
             }
-            return ListView.builder(
-              itemCount: loaded.items.length,
-              itemBuilder: (context, i) {
-                final todo = loaded.items[i];
-                return TodoTile(
-                  todo: todo,
-                  completion: loaded.completionsByTodoId[todo.id],
-                  onToggleComplete: () => context
-                      .read<TodoBloc>()
-                      .add(TodoCompletionToggled(todo.id)),
-                  onTap: () => _openForm(context, existing: todo),
-                  onDelete: () =>
-                      context.read<TodoBloc>().add(TodoDeleted(todo.id)),
-                );
-              },
+            return ListView(
+              children: [
+                if (loaded.items.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 24, 16, 0),
+                    child: Text(
+                      'No active todos. All caught up!',
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  for (final todo in loaded.items)
+                    TodoTile(
+                      todo: todo,
+                      completion: loaded.completionsByTodoId[todo.id],
+                      onToggleComplete: () => context
+                          .read<TodoBloc>()
+                          .add(TodoCompletionToggled(todo.id)),
+                      onTap: () => _openForm(context, existing: todo),
+                      onDelete: () =>
+                          context.read<TodoBloc>().add(TodoDeleted(todo.id)),
+                    ),
+                if (loaded.history.isNotEmpty) _HistorySection(history: loaded.history),
+              ],
             );
           },
         ),
@@ -116,5 +129,63 @@ class _TodoListView extends StatelessWidget {
         child: TodoFormPage(existing: existing),
       ),
     ));
+  }
+}
+
+class _HistorySection extends StatefulWidget {
+  const _HistorySection({required this.history});
+  final List<FinishedTodo> history;
+
+  @override
+  State<_HistorySection> createState() => _HistorySectionState();
+}
+
+class _HistorySectionState extends State<_HistorySection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final df = DateFormat.yMMMd().add_jm();
+    final visible = _expanded ? widget.history : widget.history.take(3).toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 24, 0, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.history, size: 18, color: Theme.of(context).colorScheme.outline),
+                const SizedBox(width: 6),
+                Text(
+                  'History (last 7 days) — ${widget.history.length}',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                ),
+                if (widget.history.length > 3) ...[
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    child: Text(_expanded ? 'Show less' : 'Show all'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          for (final h in visible)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.check, size: 18),
+              title: Text(
+                h.title,
+                style: const TextStyle(decoration: TextDecoration.lineThrough),
+              ),
+              subtitle: Text(df.format(h.completedAt)),
+            ),
+        ],
+      ),
+    );
   }
 }

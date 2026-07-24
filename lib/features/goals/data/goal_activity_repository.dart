@@ -27,4 +27,21 @@ class GoalActivityRepository {
         where: '${GoalActivityCols.id} = ?',
         whereArgs: [id],
       );
+
+  Future<void> update(GoalActivity a) => _raw.update(
+        Tables.goalActivities,
+        a.toMap(),
+        where: '${GoalActivityCols.id} = ?',
+        whereArgs: [a.id],
+      );
+
+  Future<GoalActivity?> getById(String id) async {
+    final rows = await _raw.query(
+      Tables.goalActivities,
+      where: '${GoalActivityCols.id} = ?',
+      whereArgs: [id],
+    );
+    if (rows.isEmpty) return null;
+    return GoalActivity.fromMap(rows.first);
+  }
 }

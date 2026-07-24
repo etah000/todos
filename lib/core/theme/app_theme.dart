@@ -12,6 +12,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
+        actionsIconTheme: IconThemeData(color: scheme.onPrimary),
         centerTitle: false,
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -25,6 +26,13 @@ class AppTheme {
       seedColor: const Color(0xFF3F51B5),
       brightness: Brightness.dark,
     );
-    return ThemeData(useMaterial3: true, colorScheme: scheme);
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      appBarTheme: AppBarTheme(
+        actionsIconTheme: IconThemeData(color: scheme.onSurface),
+        centerTitle: false,
+      ),
+    );
   }
 }

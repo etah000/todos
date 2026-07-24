@@ -40,6 +40,15 @@ void main() {
       periodStart: DateTime(2026, 1, 1), periodEnd: DateTime(2026, 1, 31, 23, 59, 59, 999),
       completedAt: DateTime(2026, 1, 1),
     ));
+    registerFallbackValue(Goal(
+      id: 'x', title: 'x',
+      startDate: DateTime(2026, 1, 1), endDate: DateTime(2026, 1, 31),
+      createdAt: DateTime(2026, 1, 1), updatedAt: DateTime(2026, 1, 1), archived: false,
+    ));
+    registerFallbackValue(GoalActivity(
+      id: 'x', goalId: 'x', title: 'x',
+      recurrence: Recurrence.none, createdAt: DateTime(2026, 1, 1),
+    ));
   });
 
   setUp(() {
@@ -96,6 +105,93 @@ void main() {
       expect(captured.activityId, 'a1');
       expect(captured.periodStart, DateTime(2026, 6, 15));
       expect(captured.periodEnd, DateTime(2026, 6, 21, 23, 59, 59, 999));
+    },
+  );
+
+  blocTest<GoalBloc, GoalState>(
+    'GoalUpdated calls repo.update with a refreshed updatedAt',
+    build: () {
+      when(() => goals.update(any())).thenAnswer((_) async {});
+      return GoalBloc(
+        goalRepo: goals,
+        activityRepo: activities,
+        completionRepo: completions,
+        uuid: const Uuid(),
+        now: () => DateTime(2026, 6, 17, 12),
+      );
+    },
+    act: (b) => b.add(GoalUpdated(makeGoal().copyWith(
+      title: 'Renamed',
+      description: 'new desc',
+      endDate: DateTime(2026, 9, 30),
+    ))),
+    verify: (_) {
+      final captured = verify(() => goals.update(captureAny())).captured.single
+          as Goal;
+      expect(captured.title, 'Renamed');
+      expect(captured.description, 'new desc');
+      expect(captured.endDate, DateTime(2026, 9, 30));
+      expect(captured.updatedAt, DateTime(2026, 6, 17, 12));
+    },
+  );
+
+  blocTest<GoalBloc, GoalState>(
+    'ActivityCountLogged adds delta to totalCount and persists',
+    build: () {
+      var currentActivity = makeActivity();
+      when(() => activities.update(any())).thenAnswer((invocation) async {
+        currentActivity = invocation.positionalArguments[0] as GoalActivity;
+      });
+      when(() => activities.getById(any())).thenAnswer((invocation) async => currentActivity);
+      return GoalBloc(
+        goalRepo: goals,
+        activityRepo: activities,
+        completionRepo: completions,
+        uuid: const Uuid(),
+        now: () => DateTime(2026, 6, 17),
+      );
+    },
+    act: (b) async {
+      b.add(const GoalsSubscriptionRequested());
+      await Future<void>.delayed(Duration.zero);
+      b.add(const ActivityCountLogged(activityId: 'a1', delta: 5));
+    },
+    verify: (_) {
+      final captured = verify(() => activities.update(captureAny())).captured.single
+          as GoalActivity;
+      expect(captured.totalCount, 5);
+    },
+  );
+
+  blocTest<GoalBloc, GoalState>(
+    'ActivityDurationLogged accumulates seconds and persists',
+    build: () {
+      var currentActivity = makeActivity();
+      when(() => activities.update(any())).thenAnswer((invocation) async {
+        currentActivity = invocation.positionalArguments[0] as GoalActivity;
+      });
+      when(() => activities.getById(any())).thenAnswer((invocation) async => currentActivity);
+      return GoalBloc(
+        goalRepo: goals,
+        activityRepo: activities,
+        completionRepo: completions,
+        uuid: const Uuid(),
+        now: () => DateTime(2026, 6, 17),
+      );
+    },
+    act: (b) async {
+      b.add(const GoalsSubscriptionRequested());
+      await Future<void>.delayed(Duration.zero);
+      b.add(const ActivityDurationLogged(activityId: 'a1', seconds: 600));
+      await Future<void>.delayed(Duration.zero);
+      b.add(const ActivityDurationLogged(activityId: 'a1', seconds: 60));
+    },
+    verify: (_) {
+      final updates = verify(() => activities.update(captureAny()))
+          .captured
+          .cast<GoalActivity>();
+      expect(updates.first.totalSeconds, 600);
+      expect(updates.last.totalSeconds, 660);
     },
   );
 }

@@ -54,4 +54,24 @@ void main() {
     act: (b) => b.add(CountdownCreated(title: 'Trip', targetDate: DateTime(2026, 7, 1))),
     verify: (_) => verify(() => repo.insert(any())).called(1),
   );
+
+  blocTest<CountdownBloc, CountdownState>(
+    'CountdownUpdated calls repo.update and reloads',
+    build: () {
+      when(() => repo.update(any())).thenAnswer((_) async {});
+      return CountdownBloc(repo: repo, uuid: const Uuid());
+    },
+    act: (b) => b.add(CountdownUpdated(
+      domain.CountdownEvent(
+        id: 'e1',
+        title: 'Renamed',
+        targetDate: DateTime(2028, 1, 1),
+        createdAt: DateTime(2026, 6, 1),
+        archived: false,
+      ),
+    )),
+    verify: (_) {
+      verify(() => repo.update(any())).called(1);
+    },
+  );
 }

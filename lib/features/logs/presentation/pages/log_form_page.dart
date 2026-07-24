@@ -36,6 +36,7 @@ class _LogFormPageState extends State<LogFormPage> {
         actions: [
           TextButton(
             onPressed: _save,
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).appBarTheme.foregroundColor),
             child: const Text('Save'),
           ),
         ],

@@ -27,10 +27,14 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
         super(const GoalInitial()) {
     on<GoalsSubscriptionRequested>(_onSubscribe);
     on<GoalCreated>(_onCreated);
+    on<GoalUpdated>(_onUpdated);
     on<GoalDeleted>(_onDeleted);
     on<ActivityCreated>(_onActivityCreated);
+    on<ActivityUpdated>(_onActivityUpdated);
     on<ActivityDeleted>(_onActivityDeleted);
     on<ActivityCompletionToggled>(_onToggled);
+    on<ActivityCountLogged>(_onCountLogged);
+    on<ActivityDurationLogged>(_onDurationLogged);
   }
 
   final GoalRepository _goals;
@@ -83,6 +87,12 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
     add(const GoalsSubscriptionRequested());
   }
 
+  Future<void> _onUpdated(GoalUpdated e, Emitter<GoalState> emit) async {
+    final updated = e.goal.copyWith(updatedAt: _now());
+    await _goals.update(updated);
+    add(const GoalsSubscriptionRequested());
+  }
+
   Future<void> _onDeleted(GoalDeleted e, Emitter<GoalState> emit) async {
     await _goals.delete(e.id);
     add(const GoalsSubscriptionRequested());
@@ -95,13 +105,35 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
       title: e.title,
       recurrence: e.recurrence,
       createdAt: _now(),
+      metric: e.metric,
     );
     await _activities.insert(a);
     add(const GoalsSubscriptionRequested());
   }
 
+  Future<void> _onActivityUpdated(ActivityUpdated e, Emitter<GoalState> emit) async {
+    await _activities.update(e.activity);
+    add(const GoalsSubscriptionRequested());
+  }
+
   Future<void> _onActivityDeleted(ActivityDeleted e, Emitter<GoalState> emit) async {
     await _activities.delete(e.activityId);
+    add(const GoalsSubscriptionRequested());
+  }
+
+  Future<void> _onCountLogged(ActivityCountLogged e, Emitter<GoalState> emit) async {
+    final target = await _activities.getById(e.activityId);
+    if (target == null) return;
+    final updated = target.copyWith(totalCount: target.totalCount + e.delta);
+    await _activities.update(updated);
+    add(const GoalsSubscriptionRequested());
+  }
+
+  Future<void> _onDurationLogged(ActivityDurationLogged e, Emitter<GoalState> emit) async {
+    final target = await _activities.getById(e.activityId);
+    if (target == null) return;
+    final updated = target.copyWith(totalSeconds: target.totalSeconds + e.seconds);
+    await _activities.update(updated);
     add(const GoalsSubscriptionRequested());
   }
 

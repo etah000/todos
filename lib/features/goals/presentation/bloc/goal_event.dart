@@ -2,6 +2,8 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../todos/domain/recurrence.dart';
+import '../../domain/goal.dart';
+import '../../domain/goal_activity.dart';
 
 abstract class GoalEvent extends Equatable {
   const GoalEvent();
@@ -28,6 +30,13 @@ class GoalCreated extends GoalEvent {
   List<Object?> get props => [title, description, startDate, endDate];
 }
 
+class GoalUpdated extends GoalEvent {
+  const GoalUpdated(this.goal);
+  final Goal goal;
+  @override
+  List<Object?> get props => [goal];
+}
+
 class GoalDeleted extends GoalEvent {
   const GoalDeleted(this.id);
   final String id;
@@ -40,12 +49,21 @@ class ActivityCreated extends GoalEvent {
     required this.goalId,
     required this.title,
     required this.recurrence,
+    this.metric = ActivityMetric.boolean,
   });
   final String goalId;
   final String title;
   final Recurrence recurrence;
+  final ActivityMetric metric;
   @override
-  List<Object?> get props => [goalId, title, recurrence];
+  List<Object?> get props => [goalId, title, recurrence, metric];
+}
+
+class ActivityUpdated extends GoalEvent {
+  const ActivityUpdated(this.activity);
+  final GoalActivity activity;
+  @override
+  List<Object?> get props => [activity];
 }
 
 class ActivityDeleted extends GoalEvent {
@@ -61,4 +79,22 @@ class ActivityCompletionToggled extends GoalEvent {
   final String activityId;
   @override
   List<Object?> get props => [goalId, activityId];
+}
+
+/// Add [delta] to the activity's running totalCount (count metric only).
+class ActivityCountLogged extends GoalEvent {
+  const ActivityCountLogged({required this.activityId, required this.delta});
+  final String activityId;
+  final int delta;
+  @override
+  List<Object?> get props => [activityId, delta];
+}
+
+/// Add [seconds] to the activity's running totalSeconds (duration metric only).
+class ActivityDurationLogged extends GoalEvent {
+  const ActivityDurationLogged({required this.activityId, required this.seconds});
+  final String activityId;
+  final int seconds;
+  @override
+  List<Object?> get props => [activityId, seconds];
 }
