@@ -72,6 +72,13 @@ class GoalDetailPage extends StatelessWidget {
               ],
               Text('${df.format(goal.startDate)} → ${df.format(goal.endDate)}'),
               const SizedBox(height: 16),
+              if (acts.isNotEmpty) ...[
+                Text('Weekly progress',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                WeeklyProgressCard(activityIds: acts.map((a) => a.id).toList()),
+                const SizedBox(height: 16),
+              ],
               _ActivitiesExpansion(
                 goalId: goal.id,
                 activities: acts,
@@ -98,7 +105,9 @@ class _ActivitiesExpansion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = activities.where((a) => completionsByActivityId.containsKey(a.id)).length;
+    final done = activities
+        .where((a) => completionsByActivityId.containsKey(a.id))
+        .length;
     final total = activities.length;
     return Theme(
       // Strip the default ExpansionTile divider + rounded border so the
@@ -107,8 +116,10 @@ class _ActivitiesExpansion extends StatelessWidget {
       child: ExpansionTile(
         initiallyExpanded: true,
         tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-        title: Text('Activities', style: Theme.of(context).textTheme.titleMedium),
-        subtitle: Text(total == 0 ? 'None yet' : '$done / $total done this period'),
+        title:
+            Text('Activities', style: Theme.of(context).textTheme.titleMedium),
+        subtitle:
+            Text(total == 0 ? 'None yet' : '$done / $total done this period'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -132,7 +143,8 @@ class _ActivitiesExpansion extends StatelessWidget {
           if (activities.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text('No activities yet. Tap + to add one.')),
+              child:
+                  Center(child: Text('No activities yet. Tap + to add one.')),
             )
           else
             ...activities.map((a) {
@@ -145,11 +157,13 @@ class _ActivitiesExpansion extends StatelessWidget {
                     onToggle: () {
                       if (isBoolean) {
                         context.read<GoalBloc>().add(
-                              ActivityCompletionToggled(goalId: goalId, activityId: a.id),
+                              ActivityCompletionToggled(
+                                  goalId: goalId, activityId: a.id),
                             );
                       }
                     },
-                    onDelete: () => context.read<GoalBloc>().add(ActivityDeleted(a.id)),
+                    onDelete: () =>
+                        context.read<GoalBloc>().add(ActivityDeleted(a.id)),
                     onEdit: () => _openActivityEdit(context, a),
                     onLogCount: (n) => context.read<GoalBloc>().add(
                           ActivityCountLogged(activityId: a.id, delta: n),
@@ -160,9 +174,11 @@ class _ActivitiesExpansion extends StatelessWidget {
                   ),
                   if (isBoolean)
                     LinearProgressIndicator(
-                      value: completionsByActivityId.containsKey(a.id) ? 1.0 : 0.0,
+                      value:
+                          completionsByActivityId.containsKey(a.id) ? 1.0 : 0.0,
                       minHeight: 2,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                     ),
                 ],
               );
@@ -193,7 +209,8 @@ class WeeklyProgressCard extends StatelessWidget {
     final repo = ActivityCompletionRepository(db);
     final now = DateTime.now();
     final from = PeriodCalculator.weekStart(now);
-    final to = PeriodCalculator.weekEnd(now).add(const Duration(milliseconds: 1));
+    final to =
+        PeriodCalculator.weekEnd(now).add(const Duration(milliseconds: 1));
     return FutureBuilder<List<ActivityCompletion>>(
       future: repo.listByActivitiesInRange(activityIds, from: from, to: to),
       builder: (context, snap) {
@@ -204,7 +221,10 @@ class WeeklyProgressCard extends StatelessWidget {
           );
         }
         final counts = _dailyCounts(snap.data!, from, to);
-        final maxY = counts.fold<int>(0, (m, c) => c > m ? c : m).clamp(1, 9999).toDouble();
+        final maxY = counts
+            .fold<int>(0, (m, c) => c > m ? c : m)
+            .clamp(1, 9999)
+            .toDouble();
         return SizedBox(
           height: 160,
           child: BarChart(
@@ -246,7 +266,8 @@ class WeeklyProgressCard extends StatelessWidget {
                         toY: counts[i].toDouble(),
                         color: Theme.of(context).colorScheme.primary,
                         width: 14,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(3)),
                       ),
                     ],
                   ),
@@ -261,7 +282,8 @@ class WeeklyProgressCard extends StatelessWidget {
   /// Index 0 = [from] (Monday), index 6 = Sunday. De-duplicates by activity
   /// within a day so the bar shows "distinct activities completed", not raw
   /// tap count.
-  static List<int> _dailyCounts(List<ActivityCompletion> cs, DateTime from, DateTime to) {
+  static List<int> _dailyCounts(
+      List<ActivityCompletion> cs, DateTime from, DateTime to) {
     final out = List<int>.filled(7, 0);
     final perDay = List<Set<String>>.generate(7, (_) => <String>{});
     for (final c in cs) {

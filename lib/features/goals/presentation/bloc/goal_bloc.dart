@@ -43,7 +43,8 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
   final Uuid _uuid;
   final DateTime Function() _now;
 
-  Future<void> _onSubscribe(GoalsSubscriptionRequested e, Emitter<GoalState> emit) async {
+  Future<void> _onSubscribe(
+      GoalsSubscriptionRequested e, Emitter<GoalState> emit) async {
     emit(const GoalLoading());
     try {
       final goals = await _goals.getAll();
@@ -56,7 +57,9 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
         for (final a in acts) {
           final (start, end) = a.recurrence.periodFor(a.createdAt, at: at);
           final c = await _completions.findByActivityInPeriod(
-            a.id, periodStart: start, periodEnd: end,
+            a.id,
+            periodStart: start,
+            periodEnd: end,
           );
           if (c != null) completionsByActivity[a.id] = c;
         }
@@ -98,7 +101,8 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
     add(const GoalsSubscriptionRequested());
   }
 
-  Future<void> _onActivityCreated(ActivityCreated e, Emitter<GoalState> emit) async {
+  Future<void> _onActivityCreated(
+      ActivityCreated e, Emitter<GoalState> emit) async {
     final a = GoalActivity(
       id: _uuid.v4(),
       goalId: e.goalId,
@@ -111,58 +115,78 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
     add(const GoalsSubscriptionRequested());
   }
 
-  Future<void> _onActivityUpdated(ActivityUpdated e, Emitter<GoalState> emit) async {
+  Future<void> _onActivityUpdated(
+      ActivityUpdated e, Emitter<GoalState> emit) async {
     await _activities.update(e.activity);
     add(const GoalsSubscriptionRequested());
   }
 
-  Future<void> _onActivityDeleted(ActivityDeleted e, Emitter<GoalState> emit) async {
+  Future<void> _onActivityDeleted(
+      ActivityDeleted e, Emitter<GoalState> emit) async {
     await _activities.delete(e.activityId);
     add(const GoalsSubscriptionRequested());
   }
 
-  Future<void> _onCountLogged(ActivityCountLogged e, Emitter<GoalState> emit) async {
+  Future<void> _onCountLogged(
+      ActivityCountLogged e, Emitter<GoalState> emit) async {
     final target = await _activities.getById(e.activityId);
     if (target == null) return;
     final updated = target.copyWith(totalCount: target.totalCount + e.delta);
     await _activities.update(updated);
+    await _recordActivityCompletion(target);
     add(const GoalsSubscriptionRequested());
   }
 
-  Future<void> _onDurationLogged(ActivityDurationLogged e, Emitter<GoalState> emit) async {
+  Future<void> _onDurationLogged(
+      ActivityDurationLogged e, Emitter<GoalState> emit) async {
     final target = await _activities.getById(e.activityId);
     if (target == null) return;
-    final updated = target.copyWith(totalSeconds: target.totalSeconds + e.seconds);
+    final updated =
+        target.copyWith(totalSeconds: target.totalSeconds + e.seconds);
     await _activities.update(updated);
+    await _recordActivityCompletion(target);
     add(const GoalsSubscriptionRequested());
   }
 
-  Future<void> _onToggled(ActivityCompletionToggled e, Emitter<GoalState> emit) async {
+  Future<void> _onToggled(
+      ActivityCompletionToggled e, Emitter<GoalState> emit) async {
     final at = _now();
     final activities = (state is GoalsLoaded)
-        ? (state as GoalsLoaded).activitiesByGoalId[e.goalId] ?? const <GoalActivity>[]
+        ? (state as GoalsLoaded).activitiesByGoalId[e.goalId] ??
+            const <GoalActivity>[]
         : const <GoalActivity>[];
     final activity = activities.firstWhere(
       (a) => a.id == e.activityId,
       orElse: () => GoalActivity(
-        id: e.activityId, goalId: e.goalId, title: '',
-        recurrence: Recurrence.none, createdAt: at,
+        id: e.activityId,
+        goalId: e.goalId,
+        title: '',
+        recurrence: Recurrence.none,
+        createdAt: at,
       ),
     );
-    final (start, end) = activity.recurrence.periodFor(activity.createdAt, at: at);
+    await _recordActivityCompletion(activity);
+    add(const GoalsSubscriptionRequested());
+  }
+
+  Future<void> _recordActivityCompletion(GoalActivity activity) async {
+    final at = _now();
+    final (start, end) =
+        activity.recurrence.periodFor(activity.createdAt, at: at);
     final existing = await _completions.findByActivityInPeriod(
-      e.activityId, periodStart: start, periodEnd: end,
+      activity.id,
+      periodStart: start,
+      periodEnd: end,
     );
     if (existing == null) {
       final c = ActivityCompletion(
         id: _uuid.v4(),
-        activityId: e.activityId,
+        activityId: activity.id,
         periodStart: start,
         periodEnd: end,
         completedAt: at,
       );
       await _completions.insert(c);
     }
-    add(const GoalsSubscriptionRequested());
   }
 }

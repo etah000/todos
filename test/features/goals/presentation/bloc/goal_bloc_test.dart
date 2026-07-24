@@ -15,7 +15,9 @@ import 'package:todos/features/todos/domain/recurrence.dart';
 import 'package:uuid/uuid.dart';
 
 class _MockGoals extends Mock implements GoalRepository {}
+
 class _MockActivities extends Mock implements GoalActivityRepository {}
+
 class _MockCompletions extends Mock implements ActivityCompletionRepository {}
 
 void main() {
@@ -24,30 +26,46 @@ void main() {
   late _MockCompletions completions;
 
   Goal makeGoal({String id = 'g1'}) => Goal(
-        id: id, title: 'A',
-        startDate: DateTime(2026, 6, 1), endDate: DateTime(2026, 8, 31),
-        createdAt: DateTime(2026, 6, 1), updatedAt: DateTime(2026, 6, 1), archived: false,
+        id: id,
+        title: 'A',
+        startDate: DateTime(2026, 6, 1),
+        endDate: DateTime(2026, 8, 31),
+        createdAt: DateTime(2026, 6, 1),
+        updatedAt: DateTime(2026, 6, 1),
+        archived: false,
       );
 
   GoalActivity makeActivity({String id = 'a1'}) => GoalActivity(
-        id: id, goalId: 'g1', title: 'workout',
-        recurrence: Recurrence.weekly, createdAt: DateTime(2026, 6, 1),
+        id: id,
+        goalId: 'g1',
+        title: 'workout',
+        recurrence: Recurrence.weekly,
+        createdAt: DateTime(2026, 6, 1),
       );
 
   setUpAll(() {
     registerFallbackValue(ActivityCompletion(
-      id: 'x', activityId: 'x',
-      periodStart: DateTime(2026, 1, 1), periodEnd: DateTime(2026, 1, 31, 23, 59, 59, 999),
+      id: 'x',
+      activityId: 'x',
+      periodStart: DateTime(2026, 1, 1),
+      periodEnd: DateTime(2026, 1, 31, 23, 59, 59, 999),
       completedAt: DateTime(2026, 1, 1),
     ));
     registerFallbackValue(Goal(
-      id: 'x', title: 'x',
-      startDate: DateTime(2026, 1, 1), endDate: DateTime(2026, 1, 31),
-      createdAt: DateTime(2026, 1, 1), updatedAt: DateTime(2026, 1, 1), archived: false,
+      id: 'x',
+      title: 'x',
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 31),
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+      archived: false,
     ));
     registerFallbackValue(GoalActivity(
-      id: 'x', goalId: 'x', title: 'x',
-      recurrence: Recurrence.none, createdAt: DateTime(2026, 1, 1),
+      id: 'x',
+      goalId: 'x',
+      title: 'x',
+      recurrence: Recurrence.none,
+      createdAt: DateTime(2026, 1, 1),
     ));
   });
 
@@ -56,10 +74,11 @@ void main() {
     activities = _MockActivities();
     completions = _MockCompletions();
     when(() => goals.getAll()).thenAnswer((_) async => [makeGoal()]);
-    when(() => activities.listByGoal(any())).thenAnswer((_) async => [makeActivity()]);
+    when(() => activities.listByGoal(any()))
+        .thenAnswer((_) async => [makeActivity()]);
     when(() => completions.findByActivityInPeriod(any(),
-        periodStart: any(named: 'periodStart'), periodEnd: any(named: 'periodEnd')))
-        .thenAnswer((_) async => null);
+        periodStart: any(named: 'periodStart'),
+        periodEnd: any(named: 'periodEnd'))).thenAnswer((_) async => null);
   });
 
   blocTest<GoalBloc, GoalState>(
@@ -100,8 +119,9 @@ void main() {
       b.add(const ActivityCompletionToggled(goalId: 'g1', activityId: 'a1'));
     },
     verify: (_) {
-      final captured = verify(() => completions.insert(captureAny())).captured.single
-          as ActivityCompletion;
+      final captured = verify(() => completions.insert(captureAny()))
+          .captured
+          .single as ActivityCompletion;
       expect(captured.activityId, 'a1');
       expect(captured.periodStart, DateTime(2026, 6, 15));
       expect(captured.periodEnd, DateTime(2026, 6, 21, 23, 59, 59, 999));
@@ -126,8 +146,8 @@ void main() {
       endDate: DateTime(2026, 9, 30),
     ))),
     verify: (_) {
-      final captured = verify(() => goals.update(captureAny())).captured.single
-          as Goal;
+      final captured =
+          verify(() => goals.update(captureAny())).captured.single as Goal;
       expect(captured.title, 'Renamed');
       expect(captured.description, 'new desc');
       expect(captured.endDate, DateTime(2026, 9, 30));
@@ -136,13 +156,15 @@ void main() {
   );
 
   blocTest<GoalBloc, GoalState>(
-    'ActivityCountLogged adds delta to totalCount and persists',
+    'ActivityCountLogged adds delta and records current period completion',
     build: () {
       var currentActivity = makeActivity();
       when(() => activities.update(any())).thenAnswer((invocation) async {
         currentActivity = invocation.positionalArguments[0] as GoalActivity;
       });
-      when(() => activities.getById(any())).thenAnswer((invocation) async => currentActivity);
+      when(() => activities.getById(any()))
+          .thenAnswer((invocation) async => currentActivity);
+      when(() => completions.insert(any())).thenAnswer((_) async {});
       return GoalBloc(
         goalRepo: goals,
         activityRepo: activities,
@@ -157,20 +179,44 @@ void main() {
       b.add(const ActivityCountLogged(activityId: 'a1', delta: 5));
     },
     verify: (_) {
-      final captured = verify(() => activities.update(captureAny())).captured.single
-          as GoalActivity;
+      final captured = verify(() => activities.update(captureAny()))
+          .captured
+          .single as GoalActivity;
       expect(captured.totalCount, 5);
+      final completion = verify(() => completions.insert(captureAny()))
+          .captured
+          .single as ActivityCompletion;
+      expect(completion.activityId, 'a1');
+      expect(completion.periodStart, DateTime(2026, 6, 15));
+      expect(completion.periodEnd, DateTime(2026, 6, 21, 23, 59, 59, 999));
     },
   );
 
   blocTest<GoalBloc, GoalState>(
-    'ActivityDurationLogged accumulates seconds and persists',
+    'ActivityDurationLogged accumulates seconds and reuses current period completion',
     build: () {
       var currentActivity = makeActivity();
       when(() => activities.update(any())).thenAnswer((invocation) async {
         currentActivity = invocation.positionalArguments[0] as GoalActivity;
       });
-      when(() => activities.getById(any())).thenAnswer((invocation) async => currentActivity);
+      when(() => activities.getById(any()))
+          .thenAnswer((invocation) async => currentActivity);
+      var existingCompletion = false;
+      when(() => completions.findByActivityInPeriod(any(),
+          periodStart: any(named: 'periodStart'),
+          periodEnd: any(named: 'periodEnd'))).thenAnswer((_) async {
+        if (!existingCompletion) return null;
+        return ActivityCompletion(
+          id: 'c1',
+          activityId: 'a1',
+          periodStart: DateTime(2026, 6, 15),
+          periodEnd: DateTime(2026, 6, 21, 23, 59, 59, 999),
+          completedAt: DateTime(2026, 6, 17),
+        );
+      });
+      when(() => completions.insert(any())).thenAnswer((_) async {
+        existingCompletion = true;
+      });
       return GoalBloc(
         goalRepo: goals,
         activityRepo: activities,
@@ -192,6 +238,7 @@ void main() {
           .cast<GoalActivity>();
       expect(updates.first.totalSeconds, 600);
       expect(updates.last.totalSeconds, 660);
+      verify(() => completions.insert(any())).called(1);
     },
   );
 }

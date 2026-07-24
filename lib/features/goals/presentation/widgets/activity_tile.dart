@@ -1,6 +1,3 @@
-// lib/features/goals/presentation/widgets/activity_tile.dart
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../domain/activity_completion.dart';

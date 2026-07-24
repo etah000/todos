@@ -24,10 +24,10 @@ flutter run -d <device>
 flutter test
 ```
 
-Tests rely on the system sqlite3 library. Set `DART_DEFINE_SOURCE=system` to tell the sqlite3 build hook to link against `/usr/lib/x86_64-linux-gnu/libsqlite3.so`:
+Tests rely on the system sqlite3 library. The sqlite3 build hook is configured in `pubspec.yaml` to link against the OS-provided SQLite library:
 
 ```bash
-DART_DEFINE_SOURCE=system flutter test
+flutter test
 ```
 
 ## Architecture
