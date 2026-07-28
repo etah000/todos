@@ -11,6 +11,7 @@ import '../../data/countdown_repository.dart';
 import '../bloc/countdown_bloc.dart';
 import '../bloc/countdown_event.dart';
 import '../bloc/countdown_state.dart';
+import '../../domain/countdown_event.dart' as domain;
 import 'countdown_form_page.dart';
 
 class CountdownListPage extends StatelessWidget {
@@ -117,6 +118,11 @@ class _CountdownListView extends StatelessWidget {
                             ),
                       ),
                       const SizedBox(width: 4),
+                      IconButton(
+                        tooltip: 'Delete',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _confirmDelete(context, e),
+                      ),
                       const Icon(Icons.chevron_right),
                     ],
                   ),
@@ -138,5 +144,29 @@ class _CountdownListView extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, domain.CountdownEvent e) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${e.title}"?'),
+        content: const Text(
+          'This will permanently delete the countdown.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    context.read<CountdownBloc>().add(CountdownDeleted(e.id));
   }
 }
