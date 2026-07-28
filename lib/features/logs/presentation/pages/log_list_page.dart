@@ -1,6 +1,7 @@
 // lib/features/logs/presentation/pages/log_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database_scope.dart';
@@ -103,10 +104,16 @@ class _LogItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final last = entries.isEmpty ? '—' : entries.first.value.toStringAsFixed(1);
+    final latest = entries.isEmpty ? null : entries.first;
+    final unit = item.unit == null ? '' : ' ${item.unit}';
+    final countLabel =
+        entries.length == 1 ? '1 entry' : '${entries.length} entries';
+    final summary = latest == null
+        ? '$countLabel · no data yet'
+        : '$countLabel · latest: ${latest.value.toStringAsFixed(1)}$unit · ${DateFormat.yMMMd().format(latest.loggedAt)}';
     return ListTile(
       title: Text(item.name),
-      subtitle: Text('${entries.length} entries · last: $last${item.unit == null ? '' : ' ${item.unit}'}'),
+      subtitle: Text(summary),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -115,26 +122,71 @@ class _LogItemTile extends StatelessWidget {
             icon: const Icon(Icons.add),
             onPressed: () {
               final bloc = context.read<LogBloc>();
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => BlocProvider.value(value: bloc, child: LogFormPage(item: item)),
-              ));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider.value(
+                    value: bloc,
+                    child: LogFormPage(item: item),
+                  ),
+                ),
+              );
             },
+          ),
+          IconButton(
+            tooltip: 'Delete',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _confirmDelete(context),
           ),
           const Icon(Icons.chevron_right),
         ],
       ),
       onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => LogChartPage(item: item),
-        ));
+        final bloc = context.read<LogBloc>();
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BlocProvider.value(
+              value: bloc,
+              child: LogChartPage(item: item),
+            ),
+          ),
+        );
       },
       onLongPress: () {
         final bloc = context.read<LogBloc>();
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => BlocProvider.value(value: bloc, child: LogFormPage(item: item)),
-        ));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BlocProvider.value(
+              value: bloc,
+              child: LogFormPage(item: item),
+            ),
+          ),
+        );
       },
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${item.name}"?'),
+        content: const Text(
+          'This will permanently delete the log item and all its entries.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    context.read<LogBloc>().add(LogItemDeleted(item.id));
   }
 }
 
@@ -150,23 +202,37 @@ class _NewLogItemSheetState extends State<_NewLogItemSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('New log item', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name')),
+          TextField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
           const SizedBox(height: 8),
-          TextField(controller: _unit, decoration: const InputDecoration(labelText: 'Unit (optional)')),
+          TextField(
+            controller: _unit,
+            decoration: const InputDecoration(labelText: 'Unit (optional)'),
+          ),
           const SizedBox(height: 12),
           FilledButton(
             onPressed: () {
               if (_name.text.trim().isEmpty) return;
-              context.read<LogBloc>().add(LogItemCreated(
-                    name: _name.text.trim(),
-                    unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
-                  ));
+              context.read<LogBloc>().add(
+                    LogItemCreated(
+                      name: _name.text.trim(),
+                      unit:
+                          _unit.text.trim().isEmpty ? null : _unit.text.trim(),
+                    ),
+                  );
               Navigator.of(context).pop();
             },
             child: const Text('Add'),

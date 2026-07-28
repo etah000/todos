@@ -23,6 +23,7 @@ class LogBloc extends Bloc<LogEvent, LogState> {
     on<LogSubscriptionRequested>(_onSubscribe);
     on<LogItemCreated>(_onItemCreated);
     on<LogEntryAdded>(_onEntryAdded);
+    on<LogItemDeleted>(_onItemDeleted);
   }
 
   final LogItemRepository _items;
@@ -30,7 +31,10 @@ class LogBloc extends Bloc<LogEvent, LogState> {
   final Uuid _uuid;
   final DateTime Function() _now;
 
-  Future<void> _onSubscribe(LogSubscriptionRequested e, Emitter<LogState> emit) async {
+  Future<void> _onSubscribe(
+    LogSubscriptionRequested e,
+    Emitter<LogState> emit,
+  ) async {
     emit(const LogLoading());
     try {
       final items = await _items.getAll();
@@ -71,6 +75,19 @@ class LogBloc extends Bloc<LogEvent, LogState> {
       createdAt: _now(),
     );
     await _entries.insert(entry);
+    add(const LogSubscriptionRequested());
+  }
+
+  Future<void> _onItemDeleted(LogItemDeleted e, Emitter<LogState> emit) async {
+    final existing = await _entries.listByItemInRange(
+      e.id,
+      from: DateTime.fromMillisecondsSinceEpoch(0),
+      to: DateTime.now().add(const Duration(days: 1)),
+    );
+    for (final entry in existing) {
+      await _entries.delete(entry.id);
+    }
+    await _items.delete(e.id);
     add(const LogSubscriptionRequested());
   }
 }

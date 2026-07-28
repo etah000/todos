@@ -21,11 +21,23 @@ class LogItemCreated extends LogEvent {
 }
 
 class LogEntryAdded extends LogEvent {
-  const LogEntryAdded({required this.logItemId, required this.value, this.notes, this.loggedAt});
+  const LogEntryAdded({
+    required this.logItemId,
+    required this.value,
+    this.notes,
+    this.loggedAt,
+  });
   final String logItemId;
   final double value;
   final String? notes;
   final DateTime? loggedAt;
   @override
   List<Object?> get props => [logItemId, value, notes, loggedAt];
+}
+
+class LogItemDeleted extends LogEvent {
+  const LogItemDeleted(this.id);
+  final String id;
+  @override
+  List<Object?> get props => [id];
 }
