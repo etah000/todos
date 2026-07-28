@@ -30,21 +30,33 @@ void main() {
         whereArgs: ['table'],
       );
       final names = tables.map((r) => r['name'] as String).toSet();
-      expect(names, containsAll([
-        Tables.todos,
-        Tables.todoCompletions,
-        Tables.logItems,
-        Tables.logEntries,
-        Tables.goals,
-        Tables.goalActivities,
-        Tables.activityCompletions,
-        Tables.countdownEvents,
-      ]));
+      expect(
+        names,
+        containsAll([
+          Tables.todos,
+          Tables.todoCompletions,
+          Tables.logItems,
+          Tables.logEntries,
+          Tables.goals,
+          Tables.goalActivities,
+          Tables.activityCompletions,
+          Tables.countdownEvents,
+        ]),
+      );
+    });
+
+    test('creates todos with reminder mode default column', () async {
+      final columns =
+          await db.raw.rawQuery('PRAGMA table_info(${Tables.todos})');
+      final reminderMode = columns.singleWhere(
+        (row) => row['name'] == TodoCols.reminderMode,
+      );
+      expect(reminderMode['dflt_value'], "'notification_and_alarm'");
     });
 
     test('enables foreign keys (cascading delete)', () async {
       // Insert a todo then a completion, delete the todo, expect the completion gone.
-      final todoId = 't1';
+      const todoId = 't1';
       final now = DateTime.now().millisecondsSinceEpoch;
       await db.raw.insert(Tables.todos, {
         'id': todoId,

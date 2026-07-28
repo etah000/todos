@@ -6,7 +6,7 @@ import 'schema.dart';
 class Migrations {
   const Migrations._();
 
-  static const int currentVersion = 2;
+  static const int currentVersion = 3;
 
   static Future<void> onCreate(Database db, int version) async {
     await db.execute('PRAGMA foreign_keys = ON');
@@ -19,6 +19,7 @@ class Migrations {
         ${TodoCols.notes} TEXT,
         ${TodoCols.dueDate} INTEGER,
         ${TodoCols.reminderTime} INTEGER,
+        ${TodoCols.reminderMode} TEXT NOT NULL DEFAULT 'notification_and_alarm',
         ${TodoCols.recurrenceType} TEXT NOT NULL,
         ${TodoCols.recurrenceConfig} TEXT,
         ${TodoCols.createdAt} INTEGER NOT NULL,
@@ -38,7 +39,9 @@ class Migrations {
         FOREIGN KEY (${TodoCompletionCols.todoId}) REFERENCES ${Tables.todos}(id) ON DELETE CASCADE
       )
     ''');
-    batch.execute('CREATE INDEX idx_todo_completions_todo ON ${Tables.todoCompletions}(${TodoCompletionCols.todoId})');
+    batch.execute(
+      'CREATE INDEX idx_todo_completions_todo ON ${Tables.todoCompletions}(${TodoCompletionCols.todoId})',
+    );
 
     batch.execute('''
       CREATE TABLE ${Tables.finishedTodos} (
@@ -49,7 +52,9 @@ class Migrations {
         ${FinishedTodoCols.recurrenceType} TEXT NOT NULL
       )
     ''');
-    batch.execute('CREATE INDEX idx_finished_todos_completed_at ON ${Tables.finishedTodos}(${FinishedTodoCols.completedAt})');
+    batch.execute(
+      'CREATE INDEX idx_finished_todos_completed_at ON ${Tables.finishedTodos}(${FinishedTodoCols.completedAt})',
+    );
 
     batch.execute('''
       CREATE TABLE ${Tables.logItems} (
@@ -73,7 +78,9 @@ class Migrations {
         FOREIGN KEY (${LogEntryCols.logItemId}) REFERENCES ${Tables.logItems}(id) ON DELETE CASCADE
       )
     ''');
-    batch.execute('CREATE INDEX idx_log_entries_item ON ${Tables.logEntries}(${LogEntryCols.logItemId})');
+    batch.execute(
+      'CREATE INDEX idx_log_entries_item ON ${Tables.logEntries}(${LogEntryCols.logItemId})',
+    );
 
     batch.execute('''
       CREATE TABLE ${Tables.goals} (
@@ -102,7 +109,9 @@ class Migrations {
         FOREIGN KEY (${GoalActivityCols.goalId}) REFERENCES ${Tables.goals}(id) ON DELETE CASCADE
       )
     ''');
-    batch.execute('CREATE INDEX idx_goal_activities_goal ON ${Tables.goalActivities}(${GoalActivityCols.goalId})');
+    batch.execute(
+      'CREATE INDEX idx_goal_activities_goal ON ${Tables.goalActivities}(${GoalActivityCols.goalId})',
+    );
 
     batch.execute('''
       CREATE TABLE ${Tables.activityCompletions} (
@@ -115,7 +124,9 @@ class Migrations {
         FOREIGN KEY (${ActivityCompletionCols.activityId}) REFERENCES ${Tables.goalActivities}(id) ON DELETE CASCADE
       )
     ''');
-    batch.execute('CREATE INDEX idx_activity_completions_activity ON ${Tables.activityCompletions}(${ActivityCompletionCols.activityId})');
+    batch.execute(
+      'CREATE INDEX idx_activity_completions_activity ON ${Tables.activityCompletions}(${ActivityCompletionCols.activityId})',
+    );
 
     batch.execute('''
       CREATE TABLE ${Tables.countdownEvents} (
@@ -131,7 +142,11 @@ class Migrations {
     await batch.commit(noResult: true);
   }
 
-  static Future<void> onUpgrade(Database db, int oldVersion, int newVersion) async {
+  static Future<void> onUpgrade(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
     if (oldVersion < 2) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS ${Tables.finishedTodos} (
@@ -142,11 +157,24 @@ class Migrations {
           ${FinishedTodoCols.recurrenceType} TEXT NOT NULL
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_finished_todos_completed_at ON ${Tables.finishedTodos}(${FinishedTodoCols.completedAt})');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_finished_todos_completed_at ON ${Tables.finishedTodos}(${FinishedTodoCols.completedAt})',
+      );
       // Add metric + totals to existing goal_activities (boolean default for back-compat).
-      await db.execute("ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.metric} TEXT NOT NULL DEFAULT 'boolean'");
-      await db.execute("ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.totalCount} INTEGER NOT NULL DEFAULT 0");
-      await db.execute("ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.totalSeconds} INTEGER NOT NULL DEFAULT 0");
+      await db.execute(
+        "ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.metric} TEXT NOT NULL DEFAULT 'boolean'",
+      );
+      await db.execute(
+        "ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.totalCount} INTEGER NOT NULL DEFAULT 0",
+      );
+      await db.execute(
+        "ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.totalSeconds} INTEGER NOT NULL DEFAULT 0",
+      );
+    }
+    if (oldVersion < 3) {
+      await db.execute(
+        "ALTER TABLE ${Tables.todos} ADD COLUMN ${TodoCols.reminderMode} TEXT NOT NULL DEFAULT 'notification_and_alarm'",
+      );
     }
   }
 }

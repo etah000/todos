@@ -64,7 +64,9 @@ class TodoTile extends StatelessWidget {
       parts.add('Repeats ${todo.recurrence.wire}');
     }
     if (todo.reminderTime != null) {
-      parts.add('Reminder ${DateFormat.jm().format(todo.reminderTime!)}');
+      parts.add(
+        'Reminder ${DateFormat.jm().format(todo.reminderTime!)} (${todo.reminderMode.label})',
+      );
     }
     return parts.isEmpty ? '—' : parts.join(' · ');
   }

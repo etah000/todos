@@ -29,6 +29,7 @@ Future<void> rescheduleAllReminders(
           todo.title,
           r,
           recurrence: todo.recurrence,
+          reminderMode: todo.reminderMode,
         );
       } catch (err) {
         // One bad todo must not abort the rest of the bootstrap.

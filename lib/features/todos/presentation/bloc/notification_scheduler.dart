@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart'
 
 import '../../../../core/notifications/notification_service.dart';
 import '../../domain/recurrence.dart';
+import '../../domain/reminder_mode.dart';
 
 abstract class NotificationScheduler {
   Future<void> schedule(
@@ -12,6 +13,7 @@ abstract class NotificationScheduler {
     String title,
     DateTime when, {
     Recurrence recurrence = Recurrence.none,
+    ReminderMode reminderMode = ReminderMode.notificationAndAlarm,
   });
   Future<void> cancel(String todoId);
 }
@@ -38,18 +40,35 @@ class SystemNotificationScheduler implements NotificationScheduler {
     String title,
     DateTime when, {
     Recurrence recurrence = Recurrence.none,
+    ReminderMode reminderMode = ReminderMode.notificationAndAlarm,
   }) async {
     try {
       final firstFire = recurrence.nextReminderAfter(when);
       if (firstFire == null) return; // past one-time reminder
-      await NotificationService.instance.schedule(
-        id: NotificationService.idForKey('todo:$todoId'),
-        title: title,
-        body: 'Reminder: $title',
-        when: firstFire,
-        payload: 'todo:$todoId',
-        matchDateTimeComponents: _componentsFor(recurrence),
-      );
+      final components = _componentsFor(recurrence);
+      final payload = 'todo:$todoId';
+      if (reminderMode == ReminderMode.notification ||
+          reminderMode == ReminderMode.notificationAndAlarm) {
+        await NotificationService.instance.schedule(
+          id: NotificationService.idForKey('todo:$todoId'),
+          title: title,
+          body: 'Reminder: $title',
+          when: firstFire,
+          payload: payload,
+          matchDateTimeComponents: components,
+        );
+      }
+      if (reminderMode == ReminderMode.alarm ||
+          reminderMode == ReminderMode.notificationAndAlarm) {
+        await NotificationService.instance.scheduleAlarm(
+          id: NotificationService.idForKey('todo-alarm:$todoId'),
+          title: title,
+          body: 'Alarm: $title',
+          when: firstFire,
+          payload: payload,
+          matchDateTimeComponents: components,
+        );
+      }
     } catch (err) {
       // Defensive: a scheduling failure must never bubble up to the bloc
       // (which would abort the surrounding todo save/refresh flow).
@@ -62,6 +81,9 @@ class SystemNotificationScheduler implements NotificationScheduler {
     try {
       await NotificationService.instance.cancel(
         NotificationService.idForKey('todo:$todoId'),
+      );
+      await NotificationService.instance.cancel(
+        NotificationService.idForKey('todo-alarm:$todoId'),
       );
     } catch (err) {
       debugPrint('SystemNotificationScheduler.cancel failed: $err');

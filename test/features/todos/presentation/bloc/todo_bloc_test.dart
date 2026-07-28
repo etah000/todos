@@ -7,6 +7,7 @@ import 'package:todos/features/todos/data/todo_completion_repository.dart';
 import 'package:todos/features/todos/data/todo_repository.dart';
 import 'package:todos/features/todos/domain/finished_todo.dart';
 import 'package:todos/features/todos/domain/recurrence.dart';
+import 'package:todos/features/todos/domain/reminder_mode.dart';
 import 'package:todos/features/todos/domain/todo.dart';
 import 'package:todos/features/todos/domain/todo_completion.dart';
 import 'package:todos/features/todos/presentation/bloc/notification_scheduler.dart';
@@ -16,9 +17,13 @@ import 'package:todos/features/todos/presentation/bloc/todo_state.dart';
 import 'package:uuid/uuid.dart';
 
 class _MockTodoRepo extends Mock implements TodoRepository {}
+
 class _MockCompletionRepo extends Mock implements TodoCompletionRepository {}
+
 class _MockFinishedRepo extends Mock implements FinishedTodoRepository {}
+
 class _MockScheduler extends Mock implements NotificationScheduler {}
+
 class _FixedUuid extends Mock implements Uuid {}
 
 void main() {
@@ -31,28 +36,35 @@ void main() {
   setUpAll(() {
     final now = DateTime(2026, 6, 1);
     registerFallbackValue(Recurrence.none);
-    registerFallbackValue(Todo(
-      id: 'fb',
-      title: 'fb',
-      createdAt: now,
-      updatedAt: now,
-      archived: false,
-      recurrence: Recurrence.none,
-    ));
-    registerFallbackValue(TodoCompletion(
-      id: 'fb',
-      todoId: 'fb',
-      periodStart: DateTime(2026, 1, 1),
-      periodEnd: DateTime(2026, 1, 31, 23, 59, 59, 999),
-      completedAt: DateTime(2026, 1, 1),
-    ));
-    registerFallbackValue(FinishedTodo(
-      id: 'fb',
-      todoId: 'fb',
-      title: 'fb',
-      completedAt: now,
-      recurrenceType: 'none',
-    ));
+    registerFallbackValue(ReminderMode.notificationAndAlarm);
+    registerFallbackValue(
+      Todo(
+        id: 'fb',
+        title: 'fb',
+        createdAt: now,
+        updatedAt: now,
+        archived: false,
+        recurrence: Recurrence.none,
+      ),
+    );
+    registerFallbackValue(
+      TodoCompletion(
+        id: 'fb',
+        todoId: 'fb',
+        periodStart: DateTime(2026, 1, 1),
+        periodEnd: DateTime(2026, 1, 31, 23, 59, 59, 999),
+        completedAt: DateTime(2026, 1, 1),
+      ),
+    );
+    registerFallbackValue(
+      FinishedTodo(
+        id: 'fb',
+        todoId: 'fb',
+        title: 'fb',
+        completedAt: now,
+        recurrenceType: 'none',
+      ),
+    );
   });
 
   setUp(() {
@@ -62,25 +74,31 @@ void main() {
     scheduler = _MockScheduler();
     uuid = _FixedUuid();
     when(() => uuid.v4()).thenReturn('fixed-uuid');
-    when(() => completionRepo.findByTodoInPeriod(
-          any(),
-          periodStart: any(named: 'periodStart'),
-          periodEnd: any(named: 'periodEnd'),
-        )).thenAnswer((_) async => null);
+    when(
+      () => completionRepo.findByTodoInPeriod(
+        any(),
+        periodStart: any(named: 'periodStart'),
+        periodEnd: any(named: 'periodEnd'),
+      ),
+    ).thenAnswer((_) async => null);
     when(() => completionRepo.insert(any())).thenAnswer((_) async {});
     when(() => finishedRepo.insert(any())).thenAnswer((_) async {});
     when(() => finishedRepo.listSince(any())).thenAnswer((_) async => const []);
     when(() => finishedRepo.deleteBefore(any())).thenAnswer((_) async => 0);
-    when(() => scheduler.schedule(
-          any(),
-          any(),
-          any(),
-          recurrence: any(named: 'recurrence'),
-        )).thenAnswer((_) async {});
+    when(
+      () => scheduler.schedule(
+        any(),
+        any(),
+        any(),
+        recurrence: any(named: 'recurrence'),
+        reminderMode: any(named: 'reminderMode'),
+      ),
+    ).thenAnswer((_) async {});
     when(() => scheduler.cancel(any())).thenAnswer((_) async {});
   });
 
-  TodoBloc buildBloc({DateTime Function()? now, Duration? retention}) => TodoBloc(
+  TodoBloc buildBloc({DateTime Function()? now, Duration? retention}) =>
+      TodoBloc(
         todoRepo: todoRepo,
         completionRepo: completionRepo,
         finishedRepo: finishedRepo,
@@ -93,8 +111,12 @@ void main() {
   Todo makeTodo({String id = 'a1', Recurrence r = Recurrence.monthly}) {
     final now = DateTime(2026, 6, 1);
     return Todo(
-      id: id, title: 'rent', recurrence: r,
-      createdAt: now, updatedAt: now, archived: false,
+      id: id,
+      title: 'rent',
+      recurrence: r,
+      createdAt: now,
+      updatedAt: now,
+      archived: false,
     );
   }
 
@@ -122,14 +144,16 @@ void main() {
       },
       act: (b) => b.add(const TodoCompletionToggled('a1')),
       verify: (_) {
-        final completion = verify(() => completionRepo.insert(captureAny())).captured.single
-            as TodoCompletion;
+        final completion = verify(() => completionRepo.insert(captureAny()))
+            .captured
+            .single as TodoCompletion;
         expect(completion.todoId, 'a1');
         expect(completion.id, 'fixed-uuid');
         expect(completion.periodStart, DateTime(2026, 6, 1));
         expect(completion.periodEnd, DateTime(2026, 6, 30, 23, 59, 59, 999));
-        final history = verify(() => finishedRepo.insert(captureAny())).captured.single
-            as FinishedTodo;
+        final history = verify(() => finishedRepo.insert(captureAny()))
+            .captured
+            .single as FinishedTodo;
         expect(history.title, 'rent');
         expect(history.recurrenceType, 'monthly');
         verifyNever(() => todoRepo.delete(any()));
@@ -167,7 +191,8 @@ void main() {
       act: (b) => b.add(const TodosSubscriptionRequested()),
       verify: (_) {
         final captured = verify(() => finishedRepo.deleteBefore(captureAny()))
-            .captured.single as DateTime;
+            .captured
+            .single as DateTime;
         expect(captured, DateTime(2026, 6, 10));
       },
     );
@@ -180,18 +205,24 @@ void main() {
         when(() => todoRepo.insert(any())).thenAnswer((_) async {});
         return buildBloc(now: () => DateTime(2026, 6, 1, 8));
       },
-      act: (b) => b.add(TodoCreated(
-        title: 'rent',
-        reminderTime: DateTime(2026, 6, 10, 9),
-        recurrence: Recurrence.monthly,
-      )),
+      act: (b) => b.add(
+        TodoCreated(
+          title: 'rent',
+          reminderTime: DateTime(2026, 6, 10, 9),
+          reminderMode: ReminderMode.notification,
+          recurrence: Recurrence.monthly,
+        ),
+      ),
       verify: (_) {
-        verify(() => scheduler.schedule(
-              'fixed-uuid',
-              'rent',
-              DateTime(2026, 6, 10, 9),
-              recurrence: Recurrence.monthly,
-            )).called(1);
+        verify(
+          () => scheduler.schedule(
+            'fixed-uuid',
+            'rent',
+            DateTime(2026, 6, 10, 9),
+            recurrence: Recurrence.monthly,
+            reminderMode: ReminderMode.notification,
+          ),
+        ).called(1);
       },
     );
 
@@ -203,12 +234,15 @@ void main() {
       },
       act: (b) => b.add(const TodoCreated(title: 'no reminder')),
       verify: (_) {
-        verifyNever(() => scheduler.schedule(
-              any(),
-              any(),
-              any(),
-              recurrence: any(named: 'recurrence'),
-            ));
+        verifyNever(
+          () => scheduler.schedule(
+            any(),
+            any(),
+            any(),
+            recurrence: any(named: 'recurrence'),
+            reminderMode: any(named: 'reminderMode'),
+          ),
+        );
       },
     );
 
@@ -219,18 +253,23 @@ void main() {
         when(() => todoRepo.insert(any())).thenAnswer((_) async {});
         return buildBloc(now: () => DateTime(2026, 6, 17, 12));
       },
-      act: (b) => b.add(TodoCreated(
-        title: 'weekly',
-        reminderTime: DateTime(2026, 5, 20, 9), // past
-        recurrence: Recurrence.weekly,
-      )),
+      act: (b) => b.add(
+        TodoCreated(
+          title: 'weekly',
+          reminderTime: DateTime(2026, 5, 20, 9), // past
+          recurrence: Recurrence.weekly,
+        ),
+      ),
       verify: (_) {
-        verify(() => scheduler.schedule(
-              any(),
-              any(),
-              any(),
-              recurrence: Recurrence.weekly,
-            )).called(1);
+        verify(
+          () => scheduler.schedule(
+            any(),
+            any(),
+            any(),
+            recurrence: Recurrence.weekly,
+            reminderMode: ReminderMode.notificationAndAlarm,
+          ),
+        ).called(1);
       },
     );
 
@@ -240,18 +279,23 @@ void main() {
         when(() => todoRepo.insert(any())).thenAnswer((_) async {});
         return buildBloc(now: () => DateTime(2026, 6, 17, 12));
       },
-      act: (b) => b.add(TodoCreated(
-        title: 'missed',
-        reminderTime: DateTime(2026, 6, 1, 9), // past
-        recurrence: Recurrence.none,
-      )),
+      act: (b) => b.add(
+        TodoCreated(
+          title: 'missed',
+          reminderTime: DateTime(2026, 6, 1, 9), // past
+          recurrence: Recurrence.none,
+        ),
+      ),
       verify: (_) {
-        verifyNever(() => scheduler.schedule(
-              any(),
-              any(),
-              any(),
-              recurrence: any(named: 'recurrence'),
-            ));
+        verifyNever(
+          () => scheduler.schedule(
+            any(),
+            any(),
+            any(),
+            recurrence: any(named: 'recurrence'),
+            reminderMode: any(named: 'reminderMode'),
+          ),
+        );
       },
     );
 
@@ -261,9 +305,13 @@ void main() {
         when(() => todoRepo.update(any())).thenAnswer((_) async {});
         return buildBloc(now: () => DateTime(2026, 6, 1, 8));
       },
-      act: (b) => b.add(TodoUpdated(makeTodo().copyWith(
-        reminderTime: DateTime(2026, 6, 15, 14),
-      ))),
+      act: (b) => b.add(
+        TodoUpdated(
+          makeTodo().copyWith(
+            reminderTime: DateTime(2026, 6, 15, 14),
+          ),
+        ),
+      ),
       verify: (_) {
         verifyInOrder([
           () => scheduler.cancel('a1'),
@@ -272,6 +320,7 @@ void main() {
                 any(),
                 DateTime(2026, 6, 15, 14),
                 recurrence: Recurrence.monthly,
+                reminderMode: ReminderMode.notificationAndAlarm,
               ),
         ]);
       },

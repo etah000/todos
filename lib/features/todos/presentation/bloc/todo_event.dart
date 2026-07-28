@@ -2,6 +2,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../domain/recurrence.dart';
+import '../../domain/reminder_mode.dart';
 
 abstract class TodoEvent extends Equatable {
   const TodoEvent();
@@ -19,6 +20,7 @@ class TodoCreated extends TodoEvent {
     this.notes,
     this.dueDate,
     this.reminderTime,
+    this.reminderMode = ReminderMode.notificationAndAlarm,
     this.recurrence = Recurrence.none,
     this.recurrenceConfig,
   });
@@ -27,11 +29,20 @@ class TodoCreated extends TodoEvent {
   final String? notes;
   final DateTime? dueDate;
   final DateTime? reminderTime;
+  final ReminderMode reminderMode;
   final Recurrence recurrence;
   final String? recurrenceConfig;
 
   @override
-  List<Object?> get props => [title, notes, dueDate, reminderTime, recurrence, recurrenceConfig];
+  List<Object?> get props => [
+        title,
+        notes,
+        dueDate,
+        reminderTime,
+        reminderMode,
+        recurrence,
+        recurrenceConfig,
+      ];
 }
 
 class TodoUpdated extends TodoEvent {

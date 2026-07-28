@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/recurrence.dart';
+import '../../domain/reminder_mode.dart';
 import '../../domain/todo.dart';
 import '../bloc/todo_bloc.dart';
 import '../bloc/todo_event.dart';
@@ -23,6 +24,7 @@ class _TodoFormPageState extends State<TodoFormPage> {
   late final TextEditingController _notes;
   DateTime? _dueDate;
   DateTime? _reminderTime;
+  ReminderMode _reminderMode = ReminderMode.notificationAndAlarm;
   Recurrence _recurrence = Recurrence.none;
   bool _saving = false;
 
@@ -34,6 +36,7 @@ class _TodoFormPageState extends State<TodoFormPage> {
     _notes = TextEditingController(text: t?.notes ?? '');
     _dueDate = t?.dueDate;
     _reminderTime = t?.reminderTime;
+    _reminderMode = t?.reminderMode ?? ReminderMode.notificationAndAlarm;
     _recurrence = t?.recurrence ?? Recurrence.none;
   }
 
@@ -54,12 +57,20 @@ class _TodoFormPageState extends State<TodoFormPage> {
           if (_saving)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             )
           else
             TextButton(
               onPressed: _save,
-              style: TextButton.styleFrom(foregroundColor: Theme.of(context).appBarTheme.foregroundColor),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+              ),
               child: const Text('Save'),
             ),
         ],
@@ -72,7 +83,8 @@ class _TodoFormPageState extends State<TodoFormPage> {
             TextFormField(
               controller: _title,
               decoration: const InputDecoration(labelText: 'Title'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -94,6 +106,21 @@ class _TodoFormPageState extends State<TodoFormPage> {
               includeTime: true,
               onChanged: (d) => setState(() => _reminderTime = d),
             ),
+            if (_reminderTime != null) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<ReminderMode>(
+                initialValue: _reminderMode,
+                decoration: const InputDecoration(labelText: 'Reminder mode'),
+                items: ReminderMode.values
+                    .map(
+                      (m) => DropdownMenuItem(value: m, child: Text(m.label)),
+                    )
+                    .toList(),
+                onChanged: (m) => setState(
+                  () => _reminderMode = m ?? ReminderMode.notificationAndAlarm,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             DropdownButtonFormField<Recurrence>(
               initialValue: _recurrence,
@@ -101,7 +128,8 @@ class _TodoFormPageState extends State<TodoFormPage> {
               items: Recurrence.values
                   .map((r) => DropdownMenuItem(value: r, child: Text(r.wire)))
                   .toList(),
-              onChanged: (r) => setState(() => _recurrence = r ?? Recurrence.none),
+              onChanged: (r) =>
+                  setState(() => _recurrence = r ?? Recurrence.none),
             ),
           ],
         ),
@@ -114,21 +142,29 @@ class _TodoFormPageState extends State<TodoFormPage> {
     setState(() => _saving = true);
     final bloc = context.read<TodoBloc>();
     if (widget.existing == null) {
-      bloc.add(TodoCreated(
-        title: _title.text.trim(),
-        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-        dueDate: _dueDate,
-        reminderTime: _reminderTime,
-        recurrence: _recurrence,
-      ));
+      bloc.add(
+        TodoCreated(
+          title: _title.text.trim(),
+          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          dueDate: _dueDate,
+          reminderTime: _reminderTime,
+          reminderMode: _reminderMode,
+          recurrence: _recurrence,
+        ),
+      );
     } else {
-      bloc.add(TodoUpdated(widget.existing!.copyWith(
-        title: _title.text.trim(),
-        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-        dueDate: _dueDate,
-        reminderTime: _reminderTime,
-        recurrence: _recurrence,
-      )));
+      bloc.add(
+        TodoUpdated(
+          widget.existing!.copyWith(
+            title: _title.text.trim(),
+            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+            dueDate: _dueDate,
+            reminderTime: _reminderTime,
+            reminderMode: _reminderMode,
+            recurrence: _recurrence,
+          ),
+        ),
+      );
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -174,7 +210,15 @@ class _DatePickerRow extends StatelessWidget {
                 context: context,
                 initialTime: TimeOfDay.fromDateTime(value ?? DateTime.now()),
               );
-              onChanged(DateTime(picked.year, picked.month, picked.day, t?.hour ?? 9, t?.minute ?? 0));
+              onChanged(
+                DateTime(
+                  picked.year,
+                  picked.month,
+                  picked.day,
+                  t?.hour ?? 9,
+                  t?.minute ?? 0,
+                ),
+              );
             } else {
               onChanged(picked);
             }

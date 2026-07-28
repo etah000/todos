@@ -45,7 +45,10 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
   final DateTime Function() _now;
   final Duration _retention;
 
-  Future<void> _onSubscribe(TodosSubscriptionRequested e, Emitter<TodoState> emit) async {
+  Future<void> _onSubscribe(
+    TodosSubscriptionRequested e,
+    Emitter<TodoState> emit,
+  ) async {
     emit(const TodosLoading());
     try {
       await _pruneOldHistory();
@@ -54,15 +57,21 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       final completions = <String, TodoCompletion>{};
       for (final t in items) {
         final (start, end) = t.recurrence.periodFor(t.dueDate ?? at, at: at);
-        final c = await _completions.findByTodoInPeriod(t.id, periodStart: start, periodEnd: end);
+        final c = await _completions.findByTodoInPeriod(
+          t.id,
+          periodStart: start,
+          periodEnd: end,
+        );
         if (c != null) completions[t.id] = c;
       }
       final history = await _finished.listSince(at.subtract(_retention));
-      emit(TodosLoaded(
-        items: items,
-        completionsByTodoId: completions,
-        history: history,
-      ));
+      emit(
+        TodosLoaded(
+          items: items,
+          completionsByTodoId: completions,
+          history: history,
+        ),
+      );
     } catch (err) {
       emit(TodosError(err.toString()));
     }
@@ -76,6 +85,7 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       notes: e.notes,
       dueDate: e.dueDate,
       reminderTime: e.reminderTime,
+      reminderMode: e.reminderMode,
       recurrence: e.recurrence,
       recurrenceConfig: e.recurrenceConfig,
       createdAt: at,
@@ -114,10 +124,14 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       todo.title,
       r,
       recurrence: todo.recurrence,
+      reminderMode: todo.reminderMode,
     );
   }
 
-  Future<void> _onToggled(TodoCompletionToggled e, Emitter<TodoState> emit) async {
+  Future<void> _onToggled(
+    TodoCompletionToggled e,
+    Emitter<TodoState> emit,
+  ) async {
     final todo = await _todos.getById(e.id);
     if (todo == null) return;
     final at = _now();
@@ -143,13 +157,15 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
     );
     await _completions.insert(c);
     // Also record a history row.
-    await _finished.insert(FinishedTodo(
-      id: _uuid.v4(),
-      todoId: todo.id,
-      title: todo.title,
-      completedAt: at,
-      recurrenceType: todo.recurrence.wire,
-    ));
+    await _finished.insert(
+      FinishedTodo(
+        id: _uuid.v4(),
+        todoId: todo.id,
+        title: todo.title,
+        completedAt: at,
+        recurrenceType: todo.recurrence.wire,
+      ),
+    );
     // For one-time todos, hide the active row entirely (cascade removes its completions).
     if (todo.recurrence == Recurrence.none) {
       await _notifications.cancel(todo.id);

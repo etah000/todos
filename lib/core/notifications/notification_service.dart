@@ -8,7 +8,8 @@ class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
   /// Last notification payload the user tapped (warm tap) or which launched
@@ -89,14 +90,60 @@ class NotificationService {
     DateTimeComponents? matchDateTimeComponents,
   }) async {
     if (!_initialized) await init();
-    debugPrint('NotificationService.schedule: id=$id title="$title" when=$when now=${DateTime.now()} match=$matchDateTimeComponents');
+    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final canExact =
+        await androidImpl?.canScheduleExactNotifications() ?? false;
+    await _scheduleWithMode(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      payload: payload,
+      matchDateTimeComponents: matchDateTimeComponents,
+      androidScheduleMode: canExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+  }
+
+  Future<void> scheduleAlarm({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    await _scheduleWithMode(
+      id: id,
+      title: title,
+      body: body,
+      when: when,
+      payload: payload,
+      matchDateTimeComponents: matchDateTimeComponents,
+      androidScheduleMode: AndroidScheduleMode.alarmClock,
+    );
+  }
+
+  Future<void> _scheduleWithMode({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required AndroidScheduleMode androidScheduleMode,
+    String? payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    if (!_initialized) await init();
+    debugPrint(
+      'NotificationService.schedule: id=$id title="$title" when=$when now=${DateTime.now()} match=$matchDateTimeComponents',
+    );
     try {
       final scheduled = tz.TZDateTime.from(when, tz.local);
-      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
-      final canExact =
-          await androidImpl?.canScheduleExactNotifications() ?? false;
-      debugPrint('NotificationService.schedule: canExact=$canExact tzScheduled=$scheduled');
+      debugPrint(
+        'NotificationService.schedule: mode=$androidScheduleMode tzScheduled=$scheduled',
+      );
       await _plugin.zonedSchedule(
         id,
         title,
@@ -111,9 +158,7 @@ class NotificationService {
             priority: Priority.high,
           ),
         ),
-        androidScheduleMode: canExact
-            ? AndroidScheduleMode.exactAllowWhileIdle
-            : AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: androidScheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: matchDateTimeComponents,

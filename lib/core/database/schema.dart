@@ -20,6 +20,7 @@ class TodoCols {
   static const notes = 'notes';
   static const dueDate = 'due_date';
   static const reminderTime = 'reminder_time';
+  static const reminderMode = 'reminder_mode';
   static const recurrenceType = 'recurrence_type';
   static const recurrenceConfig = 'recurrence_config';
   static const createdAt = 'created_at';

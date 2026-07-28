@@ -2,6 +2,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'recurrence.dart';
+import 'reminder_mode.dart';
 
 class Todo extends Equatable {
   const Todo({
@@ -14,6 +15,7 @@ class Todo extends Equatable {
     this.notes,
     this.dueDate,
     this.reminderTime,
+    this.reminderMode = ReminderMode.notificationAndAlarm,
     this.recurrenceConfig,
   });
 
@@ -22,6 +24,7 @@ class Todo extends Equatable {
   final String? notes;
   final DateTime? dueDate;
   final DateTime? reminderTime;
+  final ReminderMode reminderMode;
   final Recurrence recurrence;
   final String? recurrenceConfig;
   final DateTime createdAt;
@@ -33,6 +36,7 @@ class Todo extends Equatable {
     String? notes,
     DateTime? dueDate,
     DateTime? reminderTime,
+    ReminderMode? reminderMode,
     Recurrence? recurrence,
     String? recurrenceConfig,
     DateTime? updatedAt,
@@ -44,6 +48,7 @@ class Todo extends Equatable {
       notes: notes ?? this.notes,
       dueDate: dueDate ?? this.dueDate,
       reminderTime: reminderTime ?? this.reminderTime,
+      reminderMode: reminderMode ?? this.reminderMode,
       recurrence: recurrence ?? this.recurrence,
       recurrenceConfig: recurrenceConfig ?? this.recurrenceConfig,
       createdAt: createdAt,
@@ -58,6 +63,7 @@ class Todo extends Equatable {
         'notes': notes,
         'due_date': dueDate?.millisecondsSinceEpoch,
         'reminder_time': reminderTime?.millisecondsSinceEpoch,
+        'reminder_mode': reminderMode.wire,
         'recurrence_type': recurrence.wire,
         'recurrence_config': recurrenceConfig,
         'created_at': createdAt.millisecondsSinceEpoch,
@@ -75,6 +81,7 @@ class Todo extends Equatable {
         reminderTime: (m['reminder_time'] as int?) == null
             ? null
             : DateTime.fromMillisecondsSinceEpoch(m['reminder_time'] as int),
+        reminderMode: ReminderMode.parse(m['reminder_mode'] as String?),
         recurrence: Recurrence.parse(m['recurrence_type'] as String?),
         recurrenceConfig: m['recurrence_config'] as String?,
         createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at'] as int),
@@ -84,7 +91,16 @@ class Todo extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, title, notes, dueDate, reminderTime,
-        recurrence, recurrenceConfig, createdAt, updatedAt, archived,
+        id,
+        title,
+        notes,
+        dueDate,
+        reminderTime,
+        reminderMode,
+        recurrence,
+        recurrenceConfig,
+        createdAt,
+        updatedAt,
+        archived,
       ];
 }

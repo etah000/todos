@@ -6,6 +6,7 @@ import 'package:todos/features/todos/data/todo_completion_repository.dart';
 import 'package:todos/features/todos/data/todo_repository.dart';
 import 'package:todos/features/todos/domain/finished_todo.dart';
 import 'package:todos/features/todos/domain/recurrence.dart';
+import 'package:todos/features/todos/domain/reminder_mode.dart';
 import 'package:todos/features/todos/domain/todo.dart';
 import 'package:todos/features/todos/presentation/bloc/notification_scheduler.dart';
 import 'package:todos/features/todos/presentation/bloc/todo_bloc.dart';
@@ -13,8 +14,11 @@ import 'package:todos/features/todos/presentation/bloc/todo_event.dart';
 import 'package:uuid/uuid.dart';
 
 class _MockTodoRepo extends Mock implements TodoRepository {}
+
 class _MockCompletionRepo extends Mock implements TodoCompletionRepository {}
+
 class _MockFinishedRepo extends Mock implements FinishedTodoRepository {}
+
 class _MockScheduler extends Mock implements NotificationScheduler {}
 
 void main() {
@@ -25,14 +29,26 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(Recurrence.none);
-    registerFallbackValue(Todo(
-      id: 'fb', title: 'fb', createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1), archived: false, recurrence: Recurrence.none,
-    ));
-    registerFallbackValue(FinishedTodo(
-      id: 'fb', todoId: 'fb', title: 'fb',
-      completedAt: DateTime(2026, 1, 1), recurrenceType: 'none',
-    ));
+    registerFallbackValue(ReminderMode.notificationAndAlarm);
+    registerFallbackValue(
+      Todo(
+        id: 'fb',
+        title: 'fb',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+        archived: false,
+        recurrence: Recurrence.none,
+      ),
+    );
+    registerFallbackValue(
+      FinishedTodo(
+        id: 'fb',
+        todoId: 'fb',
+        title: 'fb',
+        completedAt: DateTime(2026, 1, 1),
+        recurrenceType: 'none',
+      ),
+    );
   });
 
   setUp(() {
@@ -42,20 +58,25 @@ void main() {
     scheduler = _MockScheduler();
     when(() => todoRepo.insert(any())).thenAnswer((_) async {});
     when(() => todoRepo.getAll()).thenAnswer((_) async => []);
-    when(() => completionRepo.findByTodoInPeriod(
-          any(),
-          periodStart: any(named: 'periodStart'),
-          periodEnd: any(named: 'periodEnd'),
-        )).thenAnswer((_) async => null);
+    when(
+      () => completionRepo.findByTodoInPeriod(
+        any(),
+        periodStart: any(named: 'periodStart'),
+        periodEnd: any(named: 'periodEnd'),
+      ),
+    ).thenAnswer((_) async => null);
     when(() => finishedRepo.insert(any())).thenAnswer((_) async {});
     when(() => finishedRepo.listSince(any())).thenAnswer((_) async => const []);
     when(() => finishedRepo.deleteBefore(any())).thenAnswer((_) async => 0);
-    when(() => scheduler.schedule(
-          any(),
-          any(),
-          any(),
-          recurrence: any(named: 'recurrence'),
-        )).thenAnswer((_) async {});
+    when(
+      () => scheduler.schedule(
+        any(),
+        any(),
+        any(),
+        recurrence: any(named: 'recurrence'),
+        reminderMode: any(named: 'reminderMode'),
+      ),
+    ).thenAnswer((_) async {});
     when(() => scheduler.cancel(any())).thenAnswer((_) async {});
   });
 
@@ -69,12 +90,22 @@ void main() {
       notifications: scheduler,
       now: () => DateTime(2026, 6, 1),
     ),
-    act: (b) => b.add(TodoCreated(
-      title: 'rent',
-      reminderTime: DateTime(2026, 6, 10, 9),
-    )),
+    act: (b) => b.add(
+      TodoCreated(
+        title: 'rent',
+        reminderTime: DateTime(2026, 6, 10, 9),
+        reminderMode: ReminderMode.alarm,
+      ),
+    ),
     verify: (_) {
-      verify(() => scheduler.schedule(any(), 'rent', DateTime(2026, 6, 10, 9))).called(1);
+      verify(
+        () => scheduler.schedule(
+          any(),
+          'rent',
+          DateTime(2026, 6, 10, 9),
+          reminderMode: ReminderMode.alarm,
+        ),
+      ).called(1);
     },
   );
 
@@ -88,7 +119,7 @@ void main() {
       notifications: scheduler,
       now: () => DateTime(2026, 6, 1),
     ),
-    act: (b) => b.add(TodoCreated(title: 'rent')),
+    act: (b) => b.add(const TodoCreated(title: 'rent')),
     verify: (_) {
       verifyNever(() => scheduler.schedule(any(), any(), any()));
     },
