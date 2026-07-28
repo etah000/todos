@@ -12,6 +12,7 @@ import 'package:todos/features/logs/presentation/bloc/log_state.dart';
 import 'package:uuid/uuid.dart';
 
 class _MockItems extends Mock implements LogItemRepository {}
+
 class _MockEntries extends Mock implements LogEntryRepository {}
 
 void main() {
@@ -19,21 +20,38 @@ void main() {
   late _MockEntries entries;
 
   setUpAll(() {
-    registerFallbackValue(LogEntry(
-      id: 'x', logItemId: 'x', value: 0,
-      loggedAt: DateTime(2026, 1, 1), createdAt: DateTime(2026, 1, 1),
-    ));
+    registerFallbackValue(
+      LogEntry(
+        id: 'x',
+        logItemId: 'x',
+        value: 0,
+        loggedAt: DateTime(2026, 1, 1),
+        createdAt: DateTime(2026, 1, 1),
+      ),
+    );
   });
 
   setUp(() {
     items = _MockItems();
     entries = _MockEntries();
     when(() => items.getAll(includeArchived: any(named: 'includeArchived')))
-        .thenAnswer((_) async => [
-              LogItem(id: 'i1', name: 'weight', createdAt: DateTime(2026, 1, 1), archived: false),
-            ]);
-    when(() => entries.listByItemInRange(any(),
-        from: any(named: 'from'), to: any(named: 'to'))).thenAnswer((_) async => []);
+        .thenAnswer(
+      (_) async => [
+        LogItem(
+          id: 'i1',
+          name: 'weight',
+          createdAt: DateTime(2026, 1, 1),
+          archived: false,
+        ),
+      ],
+    );
+    when(
+      () => entries.listByItemInRange(
+        any(),
+        from: any(named: 'from'),
+        to: any(named: 'to'),
+      ),
+    ).thenAnswer((_) async => []);
   });
 
   blocTest<LogBloc, LogState>(
@@ -46,7 +64,12 @@ void main() {
     act: (b) => b.add(const LogSubscriptionRequested()),
     expect: () => [
       const LogLoading(),
-      predicate<LogState>((s) => s is LogLoaded && s.items.length == 1 && s.entriesByItemId['i1']!.isEmpty),
+      predicate<LogState>(
+        (s) =>
+            s is LogLoaded &&
+            s.items.length == 1 &&
+            s.entriesByItemId['i1']!.isEmpty,
+      ),
     ],
   );
 

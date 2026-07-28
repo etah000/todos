@@ -23,7 +23,10 @@ class LogLoaded extends LogState {
   final List<LogItem> items;
   final Map<String, List<LogEntry>> entriesByItemId;
 
-  LogLoaded copyWith({List<LogItem>? items, Map<String, List<LogEntry>>? entriesByItemId}) =>
+  LogLoaded copyWith({
+    List<LogItem>? items,
+    Map<String, List<LogEntry>>? entriesByItemId,
+  }) =>
       LogLoaded(
         items: items ?? this.items,
         entriesByItemId: entriesByItemId ?? this.entriesByItemId,

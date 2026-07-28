@@ -10,7 +10,8 @@ class LogItemRepository {
   final AppDatabase _db;
   Database get _raw => _db.raw;
 
-  Future<void> insert(LogItem item) => _raw.insert(Tables.logItems, item.toMap());
+  Future<void> insert(LogItem item) =>
+      _raw.insert(Tables.logItems, item.toMap());
 
   Future<List<LogItem>> getAll({bool includeArchived = false}) async {
     final rows = await _raw.query(
@@ -22,7 +23,12 @@ class LogItemRepository {
   }
 
   Future<LogItem?> getById(String id) async {
-    final rows = await _raw.query(Tables.logItems, where: '${LogItemCols.id} = ?', whereArgs: [id], limit: 1);
+    final rows = await _raw.query(
+      Tables.logItems,
+      where: '${LogItemCols.id} = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
     if (rows.isEmpty) return null;
     return LogItem.fromMap(rows.first);
   }
@@ -34,5 +40,6 @@ class LogItemRepository {
         whereArgs: [item.id],
       );
 
-  Future<void> delete(String id) => _raw.delete(Tables.logItems, where: '${LogItemCols.id} = ?', whereArgs: [id]);
+  Future<void> delete(String id) => _raw
+      .delete(Tables.logItems, where: '${LogItemCols.id} = ?', whereArgs: [id]);
 }

@@ -18,7 +18,8 @@ class LogItem extends Equatable {
   final DateTime createdAt;
   final bool archived;
 
-  LogItem copyWith({String? name, String? unit, int? color, bool? archived}) => LogItem(
+  LogItem copyWith({String? name, String? unit, int? color, bool? archived}) =>
+      LogItem(
         id: id,
         name: name ?? this.name,
         unit: unit ?? this.unit,

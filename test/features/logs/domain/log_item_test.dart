@@ -7,8 +7,12 @@ void main() {
 
     test('round-trips through toMap/fromMap', () {
       final item = LogItem(
-        id: 'i1', name: 'weight', unit: 'kg', color: 0xFF3F51B5,
-        createdAt: now, archived: false,
+        id: 'i1',
+        name: 'weight',
+        unit: 'kg',
+        color: 0xFF3F51B5,
+        createdAt: now,
+        archived: false,
       );
       final back = LogItem.fromMap(item.toMap());
       expect(back, item);
@@ -16,8 +20,12 @@ void main() {
 
     test('fromMap tolerates null color and unit', () {
       final m = {
-        'id': 'i1', 'name': 'mood', 'unit': null, 'color': null,
-        'created_at': now.millisecondsSinceEpoch, 'archived': 0,
+        'id': 'i1',
+        'name': 'mood',
+        'unit': null,
+        'color': null,
+        'created_at': now.millisecondsSinceEpoch,
+        'archived': 0,
       };
       final item = LogItem.fromMap(m);
       expect(item.color, isNull);

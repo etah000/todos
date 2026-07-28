@@ -36,7 +36,9 @@ class _LogFormPageState extends State<LogFormPage> {
         actions: [
           TextButton(
             onPressed: _save,
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).appBarTheme.foregroundColor),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+            ),
             child: const Text('Save'),
           ),
         ],
@@ -48,9 +50,11 @@ class _LogFormPageState extends State<LogFormPage> {
           children: [
             TextFormField(
               controller: _value,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: 'Value${widget.item.unit == null ? '' : ' (${widget.item.unit})'}',
+                labelText:
+                    'Value${widget.item.unit == null ? '' : ' (${widget.item.unit})'}',
               ),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Required';
@@ -62,14 +66,17 @@ class _LogFormPageState extends State<LogFormPage> {
             TextFormField(
               controller: _notes,
               decoration: const InputDecoration(labelText: 'Notes'),
-              minLines: 1, maxLines: 4,
+              minLines: 1,
+              maxLines: 4,
             ),
             const SizedBox(height: 16),
             InputDecorator(
               decoration: const InputDecoration(labelText: 'When'),
               child: Row(
                 children: [
-                  Expanded(child: Text(DateFormat.yMMMd().add_jm().format(_when))),
+                  Expanded(
+                    child: Text(DateFormat.yMMMd().add_jm().format(_when)),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.calendar_today),
                     onPressed: () async {
@@ -80,13 +87,20 @@ class _LogFormPageState extends State<LogFormPage> {
                         lastDate: DateTime(2100),
                       );
                       if (d == null) return;
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       final t = await showTimePicker(
                         context: context,
                         initialTime: TimeOfDay.fromDateTime(_when),
                       );
+                      if (!mounted) return;
                       setState(() {
-                        _when = DateTime(d.year, d.month, d.day, t?.hour ?? _when.hour, t?.minute ?? _when.minute);
+                        _when = DateTime(
+                          d.year,
+                          d.month,
+                          d.day,
+                          t?.hour ?? _when.hour,
+                          t?.minute ?? _when.minute,
+                        );
                       });
                     },
                   ),
@@ -101,12 +115,14 @@ class _LogFormPageState extends State<LogFormPage> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    context.read<LogBloc>().add(LogEntryAdded(
-          logItemId: widget.item.id,
-          value: double.parse(_value.text),
-          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-          loggedAt: _when,
-        ));
+    context.read<LogBloc>().add(
+          LogEntryAdded(
+            logItemId: widget.item.id,
+            value: double.parse(_value.text),
+            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+            loggedAt: _when,
+          ),
+        );
     Navigator.of(context).pop();
   }
 }
