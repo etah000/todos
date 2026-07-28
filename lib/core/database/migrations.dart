@@ -6,7 +6,7 @@ import 'schema.dart';
 class Migrations {
   const Migrations._();
 
-  static const int currentVersion = 3;
+  static const int currentVersion = 4;
 
   static Future<void> onCreate(Database db, int version) async {
     await db.execute('PRAGMA foreign_keys = ON');
@@ -83,49 +83,48 @@ class Migrations {
     );
 
     batch.execute('''
-      CREATE TABLE ${Tables.goals} (
-        ${GoalCols.id} TEXT PRIMARY KEY,
-        ${GoalCols.title} TEXT NOT NULL,
-        ${GoalCols.description} TEXT,
-        ${GoalCols.startDate} INTEGER NOT NULL,
-        ${GoalCols.endDate} INTEGER NOT NULL,
-        ${GoalCols.createdAt} INTEGER NOT NULL,
-        ${GoalCols.updatedAt} INTEGER NOT NULL,
-        ${GoalCols.archived} INTEGER NOT NULL DEFAULT 0
+      CREATE TABLE ${Tables.categories} (
+        ${CategoryCols.id} TEXT PRIMARY KEY,
+        ${CategoryCols.title} TEXT NOT NULL,
+        ${CategoryCols.description} TEXT,
+        ${CategoryCols.createdAt} INTEGER NOT NULL,
+        ${CategoryCols.updatedAt} INTEGER NOT NULL,
+        ${CategoryCols.archived} INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
     batch.execute('''
       CREATE TABLE ${Tables.goalActivities} (
         ${GoalActivityCols.id} TEXT PRIMARY KEY,
-        ${GoalActivityCols.goalId} TEXT NOT NULL,
+        ${GoalActivityCols.categoryId} TEXT NOT NULL,
         ${GoalActivityCols.title} TEXT NOT NULL,
         ${GoalActivityCols.recurrenceType} TEXT NOT NULL,
         ${GoalActivityCols.recurrenceConfig} TEXT,
-        ${GoalActivityCols.createdAt} INTEGER NOT NULL,
+        ${GoalActivityCols.startDate} INTEGER NOT NULL,
+        ${GoalActivityCols.targetValue} REAL NOT NULL DEFAULT 1,
+        ${GoalActivityCols.targetUnit} TEXT NOT NULL DEFAULT 'per_period',
         ${GoalActivityCols.metric} TEXT NOT NULL DEFAULT 'boolean',
-        ${GoalActivityCols.totalCount} INTEGER NOT NULL DEFAULT 0,
-        ${GoalActivityCols.totalSeconds} INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (${GoalActivityCols.goalId}) REFERENCES ${Tables.goals}(id) ON DELETE CASCADE
+        ${GoalActivityCols.createdAt} INTEGER NOT NULL,
+        FOREIGN KEY (${GoalActivityCols.categoryId}) REFERENCES ${Tables.categories}(id) ON DELETE CASCADE
       )
     ''');
     batch.execute(
-      'CREATE INDEX idx_goal_activities_goal ON ${Tables.goalActivities}(${GoalActivityCols.goalId})',
+      'CREATE INDEX idx_goal_activities_category ON ${Tables.goalActivities}(${GoalActivityCols.categoryId})',
     );
 
     batch.execute('''
-      CREATE TABLE ${Tables.activityCompletions} (
-        ${ActivityCompletionCols.id} TEXT PRIMARY KEY,
-        ${ActivityCompletionCols.activityId} TEXT NOT NULL,
-        ${ActivityCompletionCols.periodStart} INTEGER NOT NULL,
-        ${ActivityCompletionCols.periodEnd} INTEGER NOT NULL,
-        ${ActivityCompletionCols.completedAt} INTEGER NOT NULL,
-        ${ActivityCompletionCols.notes} TEXT,
-        FOREIGN KEY (${ActivityCompletionCols.activityId}) REFERENCES ${Tables.goalActivities}(id) ON DELETE CASCADE
+      CREATE TABLE ${Tables.goalLogs} (
+        ${GoalLogCols.id} TEXT PRIMARY KEY,
+        ${GoalLogCols.goalActivityId} TEXT NOT NULL,
+        ${GoalLogCols.value} REAL NOT NULL,
+        ${GoalLogCols.notes} TEXT,
+        ${GoalLogCols.loggedAt} INTEGER NOT NULL,
+        ${GoalLogCols.createdAt} INTEGER NOT NULL,
+        FOREIGN KEY (${GoalLogCols.goalActivityId}) REFERENCES ${Tables.goalActivities}(id) ON DELETE CASCADE
       )
     ''');
     batch.execute(
-      'CREATE INDEX idx_activity_completions_activity ON ${Tables.activityCompletions}(${ActivityCompletionCols.activityId})',
+      'CREATE INDEX idx_goal_logs_activity ON ${Tables.goalLogs}(${GoalLogCols.goalActivityId})',
     );
 
     batch.execute('''
@@ -160,20 +159,60 @@ class Migrations {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_finished_todos_completed_at ON ${Tables.finishedTodos}(${FinishedTodoCols.completedAt})',
       );
-      // Add metric + totals to existing goal_activities (boolean default for back-compat).
-      await db.execute(
-        "ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.metric} TEXT NOT NULL DEFAULT 'boolean'",
-      );
-      await db.execute(
-        "ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.totalCount} INTEGER NOT NULL DEFAULT 0",
-      );
-      await db.execute(
-        "ALTER TABLE ${Tables.goalActivities} ADD COLUMN ${GoalActivityCols.totalSeconds} INTEGER NOT NULL DEFAULT 0",
-      );
     }
     if (oldVersion < 3) {
       await db.execute(
         "ALTER TABLE ${Tables.todos} ADD COLUMN ${TodoCols.reminderMode} TEXT NOT NULL DEFAULT 'notification_and_alarm'",
+      );
+    }
+    if (oldVersion < 4) {
+      await db.execute('DROP TABLE IF EXISTS activity_completions');
+      await db.execute('DROP TABLE IF EXISTS goal_activities');
+      await db.execute('DROP TABLE IF EXISTS goals');
+
+      await db.execute('''
+        CREATE TABLE ${Tables.categories} (
+          ${CategoryCols.id} TEXT PRIMARY KEY,
+          ${CategoryCols.title} TEXT NOT NULL,
+          ${CategoryCols.description} TEXT,
+          ${CategoryCols.createdAt} INTEGER NOT NULL,
+          ${CategoryCols.updatedAt} INTEGER NOT NULL,
+          ${CategoryCols.archived} INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE ${Tables.goalActivities} (
+          ${GoalActivityCols.id} TEXT PRIMARY KEY,
+          ${GoalActivityCols.categoryId} TEXT NOT NULL,
+          ${GoalActivityCols.title} TEXT NOT NULL,
+          ${GoalActivityCols.recurrenceType} TEXT NOT NULL,
+          ${GoalActivityCols.recurrenceConfig} TEXT,
+          ${GoalActivityCols.startDate} INTEGER NOT NULL,
+          ${GoalActivityCols.targetValue} REAL NOT NULL DEFAULT 1,
+          ${GoalActivityCols.targetUnit} TEXT NOT NULL DEFAULT 'per_period',
+          ${GoalActivityCols.metric} TEXT NOT NULL DEFAULT 'boolean',
+          ${GoalActivityCols.createdAt} INTEGER NOT NULL,
+          FOREIGN KEY (${GoalActivityCols.categoryId}) REFERENCES ${Tables.categories}(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX idx_goal_activities_category ON ${Tables.goalActivities}(${GoalActivityCols.categoryId})',
+      );
+
+      await db.execute('''
+        CREATE TABLE ${Tables.goalLogs} (
+          ${GoalLogCols.id} TEXT PRIMARY KEY,
+          ${GoalLogCols.goalActivityId} TEXT NOT NULL,
+          ${GoalLogCols.value} REAL NOT NULL,
+          ${GoalLogCols.notes} TEXT,
+          ${GoalLogCols.loggedAt} INTEGER NOT NULL,
+          ${GoalLogCols.createdAt} INTEGER NOT NULL,
+          FOREIGN KEY (${GoalLogCols.goalActivityId}) REFERENCES ${Tables.goalActivities}(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX idx_goal_logs_activity ON ${Tables.goalLogs}(${GoalLogCols.goalActivityId})',
       );
     }
   }

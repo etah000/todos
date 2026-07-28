@@ -7,9 +7,9 @@ class Tables {
   static const finishedTodos = 'finished_todos';
   static const logItems = 'log_items';
   static const logEntries = 'log_entries';
-  static const goals = 'goals';
+  static const categories = 'categories';
   static const goalActivities = 'goal_activities';
-  static const activityCompletions = 'activity_completions';
+  static const goalLogs = 'goal_logs';
   static const countdownEvents = 'countdown_events';
 }
 
@@ -67,13 +67,11 @@ class LogEntryCols {
   static const createdAt = 'created_at';
 }
 
-class GoalCols {
-  const GoalCols._();
+class CategoryCols {
+  const CategoryCols._();
   static const id = 'id';
   static const title = 'title';
   static const description = 'description';
-  static const startDate = 'start_date';
-  static const endDate = 'end_date';
   static const createdAt = 'created_at';
   static const updatedAt = 'updated_at';
   static const archived = 'archived';
@@ -82,24 +80,25 @@ class GoalCols {
 class GoalActivityCols {
   const GoalActivityCols._();
   static const id = 'id';
-  static const goalId = 'goal_id';
+  static const categoryId = 'category_id';
   static const title = 'title';
   static const recurrenceType = 'recurrence_type';
   static const recurrenceConfig = 'recurrence_config';
-  static const createdAt = 'created_at';
+  static const startDate = 'start_date';
+  static const targetValue = 'target_value';
+  static const targetUnit = 'target_unit';
   static const metric = 'metric';
-  static const totalCount = 'total_count';
-  static const totalSeconds = 'total_seconds';
+  static const createdAt = 'created_at';
 }
 
-class ActivityCompletionCols {
-  const ActivityCompletionCols._();
+class GoalLogCols {
+  const GoalLogCols._();
   static const id = 'id';
-  static const activityId = 'activity_id';
-  static const periodStart = 'period_start';
-  static const periodEnd = 'period_end';
-  static const completedAt = 'completed_at';
+  static const goalActivityId = 'goal_activity_id';
+  static const value = 'value';
   static const notes = 'notes';
+  static const loggedAt = 'logged_at';
+  static const createdAt = 'created_at';
 }
 
 class CountdownEventCols {
