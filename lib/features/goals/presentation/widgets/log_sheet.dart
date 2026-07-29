@@ -32,7 +32,12 @@ class _LogSheetState extends State<LogSheet> {
   void initState() {
     super.initState();
     _value = TextEditingController(
-        text: widget.existing == null ? '' : widget.existing!.value.toString());
+      text: widget.existing == null
+          ? ''
+          : (widget.existing!.value == widget.existing!.value.roundToDouble()
+              ? widget.existing!.value.toInt().toString()
+              : widget.existing!.value.toString()),
+    );
     _notes = TextEditingController(text: widget.existing?.notes ?? '');
     _loggedAt = widget.existing?.loggedAt ?? DateTime.now();
   }
