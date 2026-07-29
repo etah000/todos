@@ -2,7 +2,10 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../todos/domain/recurrence.dart';
+import '../../domain/category.dart';
 import '../../domain/goal_activity.dart';
+import '../../domain/goal_log.dart';
+import '../../domain/goal_target_unit.dart';
 
 abstract class GoalEvent extends Equatable {
   const GoalEvent();
@@ -24,7 +27,7 @@ class CategoryCreated extends GoalEvent {
 
 class CategoryUpdated extends GoalEvent {
   const CategoryUpdated(this.category);
-  final dynamic category;
+  final Category category;
   @override
   List<Object?> get props => [category];
 }
@@ -54,7 +57,7 @@ class GoalActivityCreated extends GoalEvent {
   final String? recurrenceConfig;
   final DateTime startDate;
   final double targetValue;
-  final dynamic targetUnit;
+  final GoalTargetUnit targetUnit;
   @override
   List<Object?> get props => [
         categoryId, title, metric, recurrence, recurrenceConfig,
@@ -114,7 +117,7 @@ class GoalLogDeleted extends GoalEvent {
 
 class GoalLogEdited extends GoalEvent {
   const GoalLogEdited(this.log);
-  final dynamic log;
+  final GoalLog log;
   @override
   List<Object?> get props => [log];
 }
