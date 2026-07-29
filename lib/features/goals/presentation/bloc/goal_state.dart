@@ -1,9 +1,9 @@
 // lib/features/goals/presentation/bloc/goal_state.dart
 import 'package:equatable/equatable.dart';
 
-import '../../domain/activity_completion.dart';
-import '../../domain/goal.dart';
+import '../../domain/category.dart';
 import '../../domain/goal_activity.dart';
+import '../../domain/goal_log.dart';
 
 abstract class GoalState extends Equatable {
   const GoalState();
@@ -21,16 +21,16 @@ class GoalLoading extends GoalState {
 
 class GoalsLoaded extends GoalState {
   const GoalsLoaded({
-    required this.goals,
-    required this.activitiesByGoalId,
-    required this.completionsByActivityId,
+    required this.categories,
+    required this.activitiesByCategoryId,
+    required this.logsByActivityId,
   });
-  final List<Goal> goals;
-  final Map<String, List<GoalActivity>> activitiesByGoalId;
-  final Map<String, ActivityCompletion> completionsByActivityId;
+  final List<Category> categories;
+  final Map<String, List<GoalActivity>> activitiesByCategoryId;
+  final Map<String, List<GoalLog>> logsByActivityId;
 
   @override
-  List<Object?> get props => [goals, activitiesByGoalId, completionsByActivityId];
+  List<Object?> get props => [categories, activitiesByCategoryId, logsByActivityId];
 }
 
 class GoalErrorState extends GoalState {

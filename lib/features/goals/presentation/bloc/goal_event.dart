@@ -2,7 +2,6 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../todos/domain/recurrence.dart';
-import '../../domain/goal.dart';
 import '../../domain/goal_activity.dart';
 
 abstract class GoalEvent extends Equatable {
@@ -15,86 +14,107 @@ class GoalsSubscriptionRequested extends GoalEvent {
   const GoalsSubscriptionRequested();
 }
 
-class GoalCreated extends GoalEvent {
-  const GoalCreated({
-    required this.title,
-    required this.startDate,
-    required this.endDate,
-    this.description,
-  });
+class CategoryCreated extends GoalEvent {
+  const CategoryCreated({required this.title, this.description});
   final String title;
   final String? description;
-  final DateTime startDate;
-  final DateTime endDate;
   @override
-  List<Object?> get props => [title, description, startDate, endDate];
+  List<Object?> get props => [title, description];
 }
 
-class GoalUpdated extends GoalEvent {
-  const GoalUpdated(this.goal);
-  final Goal goal;
+class CategoryUpdated extends GoalEvent {
+  const CategoryUpdated(this.category);
+  final dynamic category;
   @override
-  List<Object?> get props => [goal];
+  List<Object?> get props => [category];
 }
 
-class GoalDeleted extends GoalEvent {
-  const GoalDeleted(this.id);
+class CategoryDeleted extends GoalEvent {
+  const CategoryDeleted(this.id);
   final String id;
   @override
   List<Object?> get props => [id];
 }
 
-class ActivityCreated extends GoalEvent {
-  const ActivityCreated({
-    required this.goalId,
+class GoalActivityCreated extends GoalEvent {
+  const GoalActivityCreated({
+    required this.categoryId,
     required this.title,
+    required this.metric,
     required this.recurrence,
-    this.metric = ActivityMetric.boolean,
+    required this.startDate,
+    required this.targetValue,
+    required this.targetUnit,
+    this.recurrenceConfig,
   });
-  final String goalId;
+  final String categoryId;
   final String title;
-  final Recurrence recurrence;
   final ActivityMetric metric;
+  final Recurrence recurrence;
+  final String? recurrenceConfig;
+  final DateTime startDate;
+  final double targetValue;
+  final dynamic targetUnit;
   @override
-  List<Object?> get props => [goalId, title, recurrence, metric];
+  List<Object?> get props => [
+        categoryId, title, metric, recurrence, recurrenceConfig,
+        startDate, targetValue, targetUnit,
+      ];
 }
 
-class ActivityUpdated extends GoalEvent {
-  const ActivityUpdated(this.activity);
+class GoalActivityUpdated extends GoalEvent {
+  const GoalActivityUpdated(this.activity);
   final GoalActivity activity;
   @override
   List<Object?> get props => [activity];
 }
 
-class ActivityDeleted extends GoalEvent {
-  const ActivityDeleted(this.activityId);
-  final String activityId;
+class GoalActivityDeleted extends GoalEvent {
+  const GoalActivityDeleted(this.id);
+  final String id;
   @override
-  List<Object?> get props => [activityId];
+  List<Object?> get props => [id];
 }
 
-class ActivityCompletionToggled extends GoalEvent {
-  const ActivityCompletionToggled({required this.goalId, required this.activityId});
-  final String goalId;
-  final String activityId;
+class GoalLogBooleanToggled extends GoalEvent {
+  const GoalLogBooleanToggled({
+    required this.goalActivityId,
+    required this.periodStart,
+    required this.periodEnd,
+  });
+  final String goalActivityId;
+  final DateTime periodStart;
+  final DateTime periodEnd;
   @override
-  List<Object?> get props => [goalId, activityId];
+  List<Object?> get props => [goalActivityId, periodStart, periodEnd];
 }
 
-/// Add [delta] to the activity's running totalCount (count metric only).
-class ActivityCountLogged extends GoalEvent {
-  const ActivityCountLogged({required this.activityId, required this.delta});
-  final String activityId;
+class GoalLogCountAdded extends GoalEvent {
+  const GoalLogCountAdded({required this.goalActivityId, required this.delta});
+  final String goalActivityId;
   final int delta;
   @override
-  List<Object?> get props => [activityId, delta];
+  List<Object?> get props => [goalActivityId, delta];
 }
 
-/// Add [seconds] to the activity's running totalSeconds (duration metric only).
-class ActivityDurationLogged extends GoalEvent {
-  const ActivityDurationLogged({required this.activityId, required this.seconds});
-  final String activityId;
+class GoalLogDurationAdded extends GoalEvent {
+  const GoalLogDurationAdded({required this.goalActivityId, required this.seconds});
+  final String goalActivityId;
   final int seconds;
   @override
-  List<Object?> get props => [activityId, seconds];
+  List<Object?> get props => [goalActivityId, seconds];
+}
+
+class GoalLogDeleted extends GoalEvent {
+  const GoalLogDeleted(this.id);
+  final String id;
+  @override
+  List<Object?> get props => [id];
+}
+
+class GoalLogEdited extends GoalEvent {
+  const GoalLogEdited(this.log);
+  final dynamic log;
+  @override
+  List<Object?> get props => [log];
 }
