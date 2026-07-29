@@ -1,4 +1,3 @@
-// lib/features/goals/data/goal_activity_repository.dart
 import 'package:sqflite/sqflite.dart';
 
 import '../../../core/database/database.dart';
@@ -12,11 +11,11 @@ class GoalActivityRepository {
 
   Future<void> insert(GoalActivity a) => _raw.insert(Tables.goalActivities, a.toMap());
 
-  Future<List<GoalActivity>> listByGoal(String goalId) async {
+  Future<List<GoalActivity>> listByCategory(String categoryId) async {
     final rows = await _raw.query(
       Tables.goalActivities,
-      where: '${GoalActivityCols.goalId} = ?',
-      whereArgs: [goalId],
+      where: '${GoalActivityCols.categoryId} = ?',
+      whereArgs: [categoryId],
       orderBy: '${GoalActivityCols.createdAt} ASC',
     );
     return rows.map(GoalActivity.fromMap).toList();
@@ -40,6 +39,7 @@ class GoalActivityRepository {
       Tables.goalActivities,
       where: '${GoalActivityCols.id} = ?',
       whereArgs: [id],
+      limit: 1,
     );
     if (rows.isEmpty) return null;
     return GoalActivity.fromMap(rows.first);

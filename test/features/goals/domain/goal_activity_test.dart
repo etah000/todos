@@ -1,70 +1,58 @@
-// test/features/goals/domain/goal_activity_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:todos/features/goals/domain/goal_activity.dart';
+import 'package:todos/features/goals/domain/goal_progress_snapshot.dart';
+import 'package:todos/features/goals/domain/goal_target_unit.dart';
 import 'package:todos/features/todos/domain/recurrence.dart';
 
 void main() {
-  group('GoalActivity', () {
-    final now = DateTime.fromMillisecondsSinceEpoch(1718600000000);
-
-    test('round-trips through toMap/fromMap', () {
-      final a = GoalActivity(
-        id: 'a1',
-        goalId: 'g1',
-        title: 'workout',
-        recurrence: Recurrence.weekly,
-        recurrenceConfig: null,
-        createdAt: now,
+  GoalActivity make({
+    String id = 'a1',
+    String categoryId = 'c1',
+    String title = 'pushup',
+    Recurrence recurrence = Recurrence.daily,
+    DateTime? startDate,
+    double targetValue = 15,
+    GoalTargetUnit targetUnit = GoalTargetUnit.perDay,
+    ActivityMetric metric = ActivityMetric.count,
+  }) =>
+      GoalActivity(
+        id: id,
+        categoryId: categoryId,
+        title: title,
+        recurrence: recurrence,
+        startDate: startDate ?? DateTime(2026, 1, 1),
+        targetValue: targetValue,
+        targetUnit: targetUnit,
+        metric: metric,
+        createdAt: DateTime(2026, 1, 1),
       );
-      final back = GoalActivity.fromMap(a.toMap());
-      expect(back, a);
-    });
 
-    test('round-trips count metric and totals', () {
-      final a = GoalActivity(
-        id: 'a2',
-        goalId: 'g1',
-        title: 'push-ups',
-        recurrence: Recurrence.daily,
-        createdAt: now,
-        metric: ActivityMetric.count,
-        totalCount: 42,
-      );
-      final back = GoalActivity.fromMap(a.toMap());
-      expect(back.metric, ActivityMetric.count);
-      expect(back.totalCount, 42);
-      expect(back.totalSeconds, 0);
-    });
+  test('round-trips through toMap/fromMap', () {
+    final a = make();
+    expect(GoalActivity.fromMap(a.toMap()), equals(a));
+  });
 
-    test('round-trips duration metric and totals', () {
-      final a = GoalActivity(
-        id: 'a3',
-        goalId: 'g1',
-        title: 'study',
-        recurrence: Recurrence.weekly,
-        createdAt: now,
-        metric: ActivityMetric.duration,
-        totalSeconds: 7200,
-      );
-      final back = GoalActivity.fromMap(a.toMap());
-      expect(back.metric, ActivityMetric.duration);
-      expect(back.totalSeconds, 7200);
-    });
+  test('fromMap reads target_value and target_unit from new columns', () {
+    final a = make(targetValue: 90, targetUnit: GoalTargetUnit.perWeek);
+    final restored = GoalActivity.fromMap(a.toMap());
+    expect(restored.targetValue, 90);
+    expect(restored.targetUnit, GoalTargetUnit.perWeek);
+  });
 
-    test('old rows without metric default to boolean', () {
-      final m = {
-        'id': 'a4',
-        'goal_id': 'g1',
-        'title': 'old',
-        'recurrence_type': 'daily',
-        'recurrence_config': null,
-        'created_at': now.millisecondsSinceEpoch,
-        // No metric / totalCount / totalSeconds — pre-v2 schema.
-      };
-      final a = GoalActivity.fromMap(m);
-      expect(a.metric, ActivityMetric.boolean);
-      expect(a.totalCount, 0);
-      expect(a.totalSeconds, 0);
-    });
+  test('progressSnapshot is not persisted and not in Equatable.props', () {
+    final a = make().copyWith(progressSnapshot: GoalProgressSnapshot.empty());
+    final restored = GoalActivity.fromMap(a.toMap());
+    expect(restored.progressSnapshot, isNull);
+    expect(a, equals(make()));
+  });
+
+  test('copyWith updates only the named fields and preserves id/categoryId/createdAt', () {
+    final a = make();
+    final a2 = a.copyWith(title: 'meditate', targetValue: 20);
+    expect(a2.id, 'a1');
+    expect(a2.categoryId, 'c1');
+    expect(a2.createdAt, DateTime(2026, 1, 1));
+    expect(a2.title, 'meditate');
+    expect(a2.targetValue, 20);
   });
 }

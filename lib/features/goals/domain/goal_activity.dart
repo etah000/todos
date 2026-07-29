@@ -1,10 +1,9 @@
-// lib/features/goals/domain/goal_activity.dart
 import 'package:equatable/equatable.dart';
 
 import '../../todos/domain/recurrence.dart';
+import 'goal_progress_snapshot.dart';
+import 'goal_target_unit.dart';
 
-/// What kind of measurement this activity tracks. Old rows default to
-/// [boolean] (the original yes/no done-this-period behavior).
 enum ActivityMetric {
   boolean('boolean'),
   count('count'),
@@ -24,73 +23,85 @@ enum ActivityMetric {
 class GoalActivity extends Equatable {
   const GoalActivity({
     required this.id,
-    required this.goalId,
+    required this.categoryId,
     required this.title,
     required this.recurrence,
+    required this.startDate,
+    required this.targetValue,
+    required this.targetUnit,
     required this.createdAt,
     this.recurrenceConfig,
     this.metric = ActivityMetric.boolean,
-    this.totalCount = 0,
-    this.totalSeconds = 0,
+    this.progressSnapshot,
   });
 
   final String id;
-  final String goalId;
+  final String categoryId;
   final String title;
   final Recurrence recurrence;
   final String? recurrenceConfig;
-  final DateTime createdAt;
+  final DateTime startDate;
+  final double targetValue;
+  final GoalTargetUnit targetUnit;
   final ActivityMetric metric;
-  final int totalCount;
-  final int totalSeconds;
+  final DateTime createdAt;
+
+  /// Populated by the bloc during subscription. Not persisted.
+  final GoalProgressSnapshot? progressSnapshot;
 
   GoalActivity copyWith({
     String? title,
     Recurrence? recurrence,
     String? recurrenceConfig,
+    DateTime? startDate,
+    double? targetValue,
+    GoalTargetUnit? targetUnit,
     ActivityMetric? metric,
-    int? totalCount,
-    int? totalSeconds,
+    GoalProgressSnapshot? progressSnapshot,
   }) =>
       GoalActivity(
         id: id,
-        goalId: goalId,
+        categoryId: categoryId,
         title: title ?? this.title,
         recurrence: recurrence ?? this.recurrence,
         recurrenceConfig: recurrenceConfig ?? this.recurrenceConfig,
-        createdAt: createdAt,
+        startDate: startDate ?? this.startDate,
+        targetValue: targetValue ?? this.targetValue,
+        targetUnit: targetUnit ?? this.targetUnit,
         metric: metric ?? this.metric,
-        totalCount: totalCount ?? this.totalCount,
-        totalSeconds: totalSeconds ?? this.totalSeconds,
+        createdAt: createdAt,
+        progressSnapshot: progressSnapshot ?? this.progressSnapshot,
       );
 
   Map<String, Object?> toMap() => {
         'id': id,
-        'goal_id': goalId,
+        'category_id': categoryId,
         'title': title,
         'recurrence_type': recurrence.wire,
         'recurrence_config': recurrenceConfig,
-        'created_at': createdAt.millisecondsSinceEpoch,
+        'start_date': startDate.millisecondsSinceEpoch,
+        'target_value': targetValue,
+        'target_unit': targetUnit.wire,
         'metric': metric.wire,
-        'total_count': totalCount,
-        'total_seconds': totalSeconds,
+        'created_at': createdAt.millisecondsSinceEpoch,
       };
 
   factory GoalActivity.fromMap(Map<String, Object?> m) => GoalActivity(
         id: m['id'] as String,
-        goalId: m['goal_id'] as String,
+        categoryId: m['category_id'] as String,
         title: m['title'] as String,
         recurrence: Recurrence.parse(m['recurrence_type'] as String?),
         recurrenceConfig: m['recurrence_config'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at'] as int),
+        startDate: DateTime.fromMillisecondsSinceEpoch(m['start_date'] as int),
+        targetValue: ((m['target_value'] as num?) ?? 1).toDouble(),
+        targetUnit: GoalTargetUnit.parse(m['target_unit'] as String?),
         metric: ActivityMetric.parse(m['metric'] as String?),
-        totalCount: (m['total_count'] as int?) ?? 0,
-        totalSeconds: (m['total_seconds'] as int?) ?? 0,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at'] as int),
       );
 
   @override
   List<Object?> get props => [
-        id, goalId, title, recurrence, recurrenceConfig, createdAt,
-        metric, totalCount, totalSeconds,
+        id, categoryId, title, recurrence, recurrenceConfig, startDate,
+        targetValue, targetUnit, metric, createdAt,
       ];
 }
