@@ -11,7 +11,7 @@ The redesign generalises the existing Goals feature so a single goal can be eval
 - `Goal` has `startDate`, `endDate`, `title`, `description`. The current UX uses start/end to define a window, with activities living underneath.
 - `GoalActivity` has `title`, `recurrence` (period boundary), `metric` (boolean / count / duration), `totalCount`, `totalSeconds`. It logs against an `ActivityCompletion` table that de-duplicates one completion per period.
 - `GoalBloc` wires CRUD + the three log events (`ActivityCompletionToggled`, `ActivityCountLogged`, `ActivityDurationLogged`).
-- Pages: `GoalsListPage` shows Categories → tap → `GoalDetailPage` with `WeeklyProgressCard` and `ActivityFormPage`.
+- Pages: `GoalListPage` shows a list of goals (each with `title`, `startDate`, `endDate`). Tapping a row opens `GoalDetailPage` which shows activities and a `WeeklyProgressCard`. New activities are added through `ActivityFormPage`.
 
 The current model collapses two distinct ideas:
 1. A *time-bound goal window* (start/end), and
@@ -116,7 +116,7 @@ The snapshot is computed in the bloc with an injected `now` clock so it is fully
 | `GoalActivityCreated({categoryId, title, metric, recurrence, recurrenceConfig?, startDate, targetValue, targetUnit})` | new goal |
 | `GoalActivityUpdated(activity)` | edit |
 | `GoalActivityDeleted(id)` | cascades to logs |
-| `GoalLogBooleanToggled({goalActivityId, periodStart, periodEnd})` | inserts one `GoalLog` row if no row exists in the period |
+| `GoalLogBooleanToggled({goalActivityId, periodStart, periodEnd})` | inserts one `GoalLog` row if none exists in the period; if one exists, deletes it (so re-tapping the same day un-logs that day) |
 | `GoalLogCountAdded({goalActivityId, delta})` | inserts a `GoalLog` with `value = delta` |
 | `GoalLogDurationAdded({goalActivityId, seconds})` | inserts a `GoalLog` with `value = seconds` |
 | `GoalLogDeleted(id)` | removes one event |
@@ -184,7 +184,7 @@ Fields: title, metric (segmented), recurrence (segmented), start date (date pick
 | Layer | Type | Coverage |
 |---|---|---|
 | `Category`, `GoalActivity`, `GoalLog` | unit | `toMap`/`fromMap` round-trip, `copyWith`, `Equatable` props |
-| `GoalProgressSnapshot` | unit | 4 metrics × 4 targetUnits × recurrence × period-boundary edge cases (week rollover, month-end) |
+| `GoalProgressSnapshot` | unit | 3 metrics × 4 targetUnits × recurrence × period-boundary edge cases (week rollover, month-end) |
 | Repositories | sqflite_ffi integration | CRUD + cascade delete |
 | `GoalBloc` | bloc_test | subscription emits loaded with snapshots; create/update/delete cycle; boolean-toggle dedupes per period; count/duration events insert and aggregate; snapshot recomputes when logs change |
 | `GoalsListPage`, `GoalDetailPage` | widget test | tree rendering, navigation, delete dialogs |
